@@ -40,7 +40,8 @@ Declare every AI model, API, hosted service, and AI coding assistant used in the
 
 | Provider | Model / service / tool | Purpose | Where used |
 |---|---|---|---|
-| To be completed | To be completed | To be completed | To be completed |
+| OpenAI | ChatGPT (GPT-6) | AI-assisted repository scaffolding and initial documentation drafting | Repository setup and documentation in this ChatGPT conversation |
+| To be completed | Project models, APIs, and additional AI tools | Add each actual model/service/tool used during development and runtime | Update as the implementation is finalized |
 
 ## Third-party components and licenses
 Record every external library, framework, model, dataset, API, and reused component, including its version and license/usage terms where applicable.
