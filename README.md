@@ -2,29 +2,39 @@
 
 **University Track · University of Kelaniya**
 
-This repository contains the Ralypto team's submission for **Innodata AI Catalyst '26**. The project will address a real-world challenge through a multi-agent AI system and will include a reproducible comparison with a single-agent baseline and human performance.
+This repository contains the Ralypto team's submission for **Innodata AI Catalyst '26**. The project addresses a real-world challenge through a multi-agent AI system, with a reproducible comparison against a single-agent baseline and human performance.
 
-> **Project status:** Repository initialized. Problem definition, architecture, and implementation details will be documented as the team finalizes its proposal.
-
-## Repository structure
+## Required Project Structure
 
 ```text
 ralypto-university/
 ├── project/
 │   ├── main.py
 │   └── requirements.txt
+├── README.md
 ├── docs/
 │   ├── Proposal.docx
 │   ├── Workflow.md
 │   └── PROJECT_DETAILS.md
-├── README.md
-├── .gitignore
-└── .env.example
+└── project-demo.mp4
 ```
 
-## Getting started
+## File Descriptions
+
+| File / Folder | Description |
+|---|---|
+| `main.py` | Main application entry point. |
+| `requirements.txt` | Python dependencies required to run the project. |
+| `README.md` | Project overview, setup instructions, and execution guide. |
+| `docs/Proposal.docx` | Project proposal describing the problem, the solution, and the planned implementation. |
+| `docs/Workflow.md` | Project workflow, process flow, and implementation steps. |
+| `docs/PROJECT_DETAILS.md` | Project objectives, features, functionality, and technical details. |
+| `project-demo.mp4` | Project demonstration video. |
+
+## Getting Started
 
 ### Requirements
+
 - Python 3.10 or later
 - pip
 
@@ -41,12 +51,12 @@ ralypto-university/
    python -m venv .venv
    ```
 
-   Windows PowerShell:
+   **Windows PowerShell:**
    ```powershell
    .\.venv\Scripts\Activate.ps1
    ```
 
-   macOS / Linux:
+   **macOS / Linux:**
    ```bash
    source .venv/bin/activate
    ```
@@ -56,38 +66,25 @@ ralypto-university/
    pip install -r project/requirements.txt
    ```
 
-4. Copy `.env.example` to `.env` and fill in the required values locally. Never commit secrets.
+4. Copy `.env.example` to `.env` and fill in the required values. Never commit secrets.
 
-5. Run the application:
-   ```bash
-   python project/main.py
-   ```
+### Execution
+
+Run the application:
+```bash
+python project/main.py
+```
 
 ## Documentation
 
-- [Project workflow](docs/Workflow.md)
-- [Project details and disclosure register](docs/PROJECT_DETAILS.md)
-- [Project proposal](docs/Proposal.docx) — to be added before submission
-
-## Evaluation and evidence
-
-The team will document:
-- Multi-agent execution traces and agent-to-agent information exchange.
-- A fair single-agent baseline performing the same tasks.
-- Human baseline methodology.
-- Output quality, completion time, and cost under stated test conditions.
-- Test scenarios, limitations, and reproducible results.
-
-Benchmark results will only be reported after they are produced by the submitted solution. No results will be fabricated or manually altered.
+- [Project Proposal](docs/Proposal.docx)
+- [Project Workflow](docs/Workflow.md)
+- [Project Details](docs/PROJECT_DETAILS.md)
 
 ## Team
 
 **Ralypto**  
 University of Kelaniya · Innodata AI Catalyst '26 · University Track
-
-## Competition and integrity
-
-Third-party libraries, models, APIs, and AI development tools will be acknowledged in `docs/PROJECT_DETAILS.md`. Any confidential competition material will be handled according to the organizer's rules. API keys, access tokens, passwords, and private data must never be committed to this repository.
 
 ---
 
