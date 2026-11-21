@@ -36,4 +36,5 @@ Read-only agent DB connection; SQL allow-list; RBAC and state machine in the gat
 | Implement single-agent baseline | Code done, not run (needs LLM) |
 | Run human and system evaluations | A and D run; B and human not run |
 | Document results and limitations | Done for what was run |
-| Streamlit UI, FastAPI layer, LangGraph, LightGBM | Not started |
+| Build Streamlit frontend dashboard | Done (`project/app.py`) |
+| FastAPI layer, LangGraph, LightGBM | Not started |

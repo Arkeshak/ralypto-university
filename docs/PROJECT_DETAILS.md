@@ -27,7 +27,7 @@ Cut stockouts and expiry losses with explainable recommendations; keep every act
 | System B single-agent LLM baseline (same tools, validator, gate) | Implemented, **not run** (needs LLM credentials) |
 | Evaluation harness: replay simulation, oracle PO accuracy, WAPE, safety suite, 50-question query set, scalability, bootstrap CIs | Implemented |
 | Business-type profiles (supermarket, pharmacy, hardware) | Partial: profiles change categories, shelf life, service level, review period |
-| Streamlit chat panel and approval dashboard | **Not built**; approval is via CLI (`main.py approve`) |
+| Streamlit chat panel and approval dashboard | Implemented (`project/app.py`) |
 | Human purchaser comparison (System C) | **Not run** |
 | Sinhala/Tamil input | Future work |
 
