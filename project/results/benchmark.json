@@ -1,0 +1,300 @@
+{
+  "config": {
+    "seeds": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "n_skus": 40,
+    "profile": "supermarket",
+    "budget_cap": 250000.0,
+    "llm_provider": "offline",
+    "llm_model": "",
+    "repeats": 1,
+    "date": "2026-11-21",
+    "python": "3.10.11",
+    "note": "single_agent skipped: no LLM configured"
+  },
+  "per_seed": {
+    "multi_agent": [
+      {
+        "seed": 1,
+        "n_cases": 34,
+        "unmet_rate": 0.4232375044733389,
+        "overstock_value": 0.0,
+        "expiry_writeoff_value": 50927.70999999999,
+        "po_accuracy": 0.8235294117647058,
+        "escalation_rate": 0.0,
+        "fallback_rate": 0.0,
+        "latency_median_s": 0.005987650009046774,
+        "latency_p95_s": 0.006682599996565841,
+        "tokens": 0,
+        "cost_usd": 0.0
+      },
+      {
+        "seed": 2,
+        "n_cases": 30,
+        "unmet_rate": 0.38864792102901585,
+        "overstock_value": 0.0,
+        "expiry_writeoff_value": 48635.56,
+        "po_accuracy": 0.5333333333333333,
+        "escalation_rate": 0.0,
+        "fallback_rate": 0.0,
+        "latency_median_s": 0.006373249998432584,
+        "latency_p95_s": 0.007305500010261312,
+        "tokens": 0,
+        "cost_usd": 0.0
+      },
+      {
+        "seed": 3,
+        "n_cases": 35,
+        "unmet_rate": 0.4790739091718611,
+        "overstock_value": 0.0,
+        "expiry_writeoff_value": 40105.87,
+        "po_accuracy": 0.6285714285714286,
+        "escalation_rate": 0.0,
+        "fallback_rate": 0.0,
+        "latency_median_s": 0.006211699990672059,
+        "latency_p95_s": 0.007000600002356805,
+        "tokens": 0,
+        "cost_usd": 0.0
+      },
+      {
+        "seed": 4,
+        "n_cases": 30,
+        "unmet_rate": 0.3864508476941324,
+        "overstock_value": 0.0,
+        "expiry_writeoff_value": 47583.73,
+        "po_accuracy": 0.8,
+        "escalation_rate": 0.0,
+        "fallback_rate": 0.0,
+        "latency_median_s": 0.00632604999555042,
+        "latency_p95_s": 0.007150399993406609,
+        "tokens": 0,
+        "cost_usd": 0.0
+      },
+      {
+        "seed": 5,
+        "n_cases": 32,
+        "unmet_rate": 0.4757982213150605,
+        "overstock_value": 0.0,
+        "expiry_writeoff_value": 55592.35,
+        "po_accuracy": 0.65625,
+        "escalation_rate": 0.0,
+        "fallback_rate": 0.0,
+        "latency_median_s": 0.005877499999769498,
+        "latency_p95_s": 0.006723399987095036,
+        "tokens": 0,
+        "cost_usd": 0.0
+      }
+    ],
+    "rule_based": [
+      {
+        "seed": 1,
+        "n_cases": 34,
+        "unmet_rate": 0.3544673744482882,
+        "overstock_value": 0.0,
+        "expiry_writeoff_value": 122096.20999999999,
+        "po_accuracy": 0.029411764705882353,
+        "escalation_rate": 0.029411764705882353,
+        "fallback_rate": 0.0,
+        "latency_median_s": 0.0036982000019634143,
+        "latency_p95_s": 0.004331400006776676,
+        "tokens": 0,
+        "cost_usd": 0.0
+      },
+      {
+        "seed": 2,
+        "n_cases": 30,
+        "unmet_rate": 0.292551600358959,
+        "overstock_value": 0.0,
+        "expiry_writeoff_value": 80208.7,
+        "po_accuracy": 0.06666666666666667,
+        "escalation_rate": 0.0,
+        "fallback_rate": 0.0,
+        "latency_median_s": 0.0035678999993251637,
+        "latency_p95_s": 0.00443739999900572,
+        "tokens": 0,
+        "cost_usd": 0.0
+      },
+      {
+        "seed": 3,
+        "n_cases": 35,
+        "unmet_rate": 0.2813206383998904,
+        "overstock_value": 0.0,
+        "expiry_writeoff_value": 76119.56999999999,
+        "po_accuracy": 0.11428571428571428,
+        "escalation_rate": 0.0,
+        "fallback_rate": 0.0,
+        "latency_median_s": 0.0036777000059373677,
+        "latency_p95_s": 0.004179900002782233,
+        "tokens": 0,
+        "cost_usd": 0.0
+      },
+      {
+        "seed": 4,
+        "n_cases": 30,
+        "unmet_rate": 0.2872392381218168,
+        "overstock_value": 0.0,
+        "expiry_writeoff_value": 76045.02,
+        "po_accuracy": 0.13333333333333333,
+        "escalation_rate": 0.0,
+        "fallback_rate": 0.0,
+        "latency_median_s": 0.0037725000001955777,
+        "latency_p95_s": 0.004276699997717515,
+        "tokens": 0,
+        "cost_usd": 0.0
+      },
+      {
+        "seed": 5,
+        "n_cases": 32,
+        "unmet_rate": 0.3340866015454148,
+        "overstock_value": 44.40656685737316,
+        "expiry_writeoff_value": 113905.94,
+        "po_accuracy": 0.09375,
+        "escalation_rate": 0.0,
+        "fallback_rate": 0.0,
+        "latency_median_s": 0.003838649994577281,
+        "latency_p95_s": 0.004650500006391667,
+        "tokens": 0,
+        "cost_usd": 0.0
+      }
+    ]
+  },
+  "summary": {
+    "multi_agent": {
+      "unmet_rate": {
+        "mean": 0.43064168073668174,
+        "ci95": [
+          0.3951264230509038,
+          0.4659412155180763
+        ]
+      },
+      "overstock_value": {
+        "mean": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "expiry_writeoff_value": {
+        "mean": 48569.044,
+        "ci95": [
+          43765.81,
+          52809.634
+        ]
+      },
+      "po_accuracy": {
+        "mean": 0.6883368347338935,
+        "ci95": [
+          0.5960119047619048,
+          0.7806617647058823
+        ]
+      },
+      "latency_median_s": {
+        "mean": 0.006155229998694267,
+        "ci95": [
+          0.005976649999502115,
+          0.00631261999515118
+        ]
+      },
+      "tokens": {
+        "mean": 0,
+        "ci95": [
+          0,
+          0
+        ]
+      },
+      "cost_usd": {
+        "mean": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "rule_based": {
+      "unmet_rate": {
+        "mean": 0.30993309057487384,
+        "ci95": [
+          0.28593427068047467,
+          0.33694559260241924
+        ]
+      },
+      "overstock_value": {
+        "mean": 8.881313371474631,
+        "ci95": [
+          0.0,
+          26.643940114423895
+        ]
+      },
+      "expiry_writeoff_value": {
+        "mean": 93675.088,
+        "ci95": [
+          76907.576,
+          111262.828
+        ]
+      },
+      "po_accuracy": {
+        "mean": 0.08748949579831933,
+        "ci95": [
+          0.0538375350140056,
+          0.11779761904761904
+        ]
+      },
+      "latency_median_s": {
+        "mean": 0.003710990000399761,
+        "ci95": [
+          0.0036307800008216875,
+          0.0037932299979729577
+        ]
+      },
+      "tokens": {
+        "mean": 0,
+        "ci95": [
+          0,
+          0
+        ]
+      },
+      "cost_usd": {
+        "mean": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      }
+    }
+  },
+  "paired": {
+    "multi_agent_minus_rule_based:unmet_rate": {
+      "mean_diff": 0.12070859016180792,
+      "ci95": [
+        0.08578890219250615,
+        0.1662135505511229
+      ]
+    },
+    "multi_agent_minus_rule_based:overstock_value": {
+      "mean_diff": -8.881313371474631,
+      "ci95": [
+        -26.643940114423895,
+        0.0
+      ]
+    },
+    "multi_agent_minus_rule_based:expiry_writeoff_value": {
+      "mean_diff": -45106.044,
+      "ci95": [
+        -60678.446,
+        -31482.253999999997
+      ]
+    },
+    "multi_agent_minus_rule_based:po_accuracy": {
+      "mean_diff": 0.6008473389355742,
+      "ci95": [
+        0.5048809523809523,
+        0.7031372549019608
+      ]
+    }
+  }
+}
