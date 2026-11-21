@@ -10,7 +10,10 @@ This repository contains the Ralypto team's submission for **Innodata AI Catalys
 ralypto-university/
 ├── project/
 │   ├── main.py
-│   └── requirements.txt
+│   ├── requirements.txt
+│   ├── procure/        (agents, gate, orchestrator, evaluation)
+│   ├── tests/
+│   └── results/        (generated benchmark output and traces)
 ├── README.md
 ├── docs/
 │   ├── Proposal.docx
@@ -70,10 +73,19 @@ ralypto-university/
 
 ### Execution
 
-Run the application:
 ```bash
-python project/main.py
+python project/main.py demo            # seed a synthetic ERP, run agents, approve one PO
+python project/main.py ask "Which items expire next month?"
+python project/main.py approve 3       # approve a pending PO as user bob (approver)
+python project/main.py bench           # full evaluation, writes project/results/
+python -m pytest project/tests -q
 ```
+
+Runs fully offline by default. To enable optional LLM text (rationales, text-to-SQL, single-agent baseline), set `LLM_PROVIDER=anthropic`, `LLM_MODEL` and `LLM_API_KEY` in `.env`. The LLM path has not been exercised against a live API yet.
+
+### Status
+
+Phase 1 prototype implemented in deterministic mode. Not yet built: Streamlit UI, FastAPI layer, LangGraph, LightGBM, human baseline, live-LLM runs. See `docs/PROJECT_DETAILS.md` for results and limitations.
 
 ## Documentation
 

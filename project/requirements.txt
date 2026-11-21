@@ -1,3 +1,2 @@
-# Add pinned runtime dependencies here as the architecture is finalized.
-# Example:
-# python-dotenv==1.0.1
+pydantic>=2.5,<3
+pytest>=8.0

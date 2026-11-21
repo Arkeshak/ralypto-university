@@ -31,3 +31,5 @@ Thumbs.db
 logs/
 data/local/
 outputs/local/
+
+project/data/
