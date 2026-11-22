@@ -157,14 +157,15 @@ python project/main.py demo            # seed a synthetic ERP, run agents, appro
 python project/main.py ask "Which items expire next month?"
 python project/main.py approve 3       # approve a pending PO as user bob (approver)
 python project/main.py bench           # full evaluation, writes project/results/
+python -m streamlit run project/app.py # launch the procurement dashboard
 python -m pytest project/tests -q
 ```
 
-Runs fully offline by default. To enable optional LLM text (rationales, text-to-SQL, single-agent baseline), set `LLM_PROVIDER=anthropic`, `LLM_MODEL` and `LLM_API_KEY` in `.env`. The LLM path has not been exercised against a live API yet.
+The Streamlit dashboard provides inventory monitoring, agent-driven purchase recommendations, approval/rejection with an audit trail, safe read-only ERP queries, and existing benchmark results. It reuses `project/data/demo.db` and only seeds it on first launch. Runs fully offline by default. To enable optional LLM text (rationales, text-to-SQL, single-agent baseline), set `LLM_PROVIDER=anthropic`, `LLM_MODEL` and `LLM_API_KEY` in `.env`. The LLM path has not been exercised against a live API yet.
 
 ### Status
 
-Phase 1 prototype implemented in deterministic mode. Not yet built: Streamlit UI, FastAPI layer, LangGraph, LightGBM, human baseline, live-LLM runs. See `docs/PROJECT_DETAILS.md` for results and limitations.
+Phase 1 prototype and Streamlit UI implemented in deterministic mode. Not yet built: FastAPI layer, LangGraph, LightGBM, human baseline, live-LLM runs. See `docs/PROJECT_DETAILS.md` for results and limitations.
 
 ---
 
