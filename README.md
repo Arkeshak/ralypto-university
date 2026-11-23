@@ -1,11 +1,11 @@
 
 <div align="center">
 
-# RALYPTO
+# ProcureAgents
 
 ### Innodata AI Catalyst '26
 
-**University Track | University of Kelaniya**
+**Team Ralypto | University of Kelaniya**
 
 *Solve Today, Build Tomorrow.*
 
@@ -31,7 +31,7 @@ A Multi-Agent AI System for Real-World Problem Solving
 
 ## Project Overview
 
-Ralypto is the University of Kelaniya team's submission for Innodata AI Catalyst '26.
+ProcureAgents is Team Ralypto's (University of Kelaniya) submission for Innodata AI Catalyst '26.
 
 The project addresses a real-world challenge through a multi-agent artificial intelligence system. It explores how collaborative AI agents can work together to solve complex problems through coordinated decision-making and task execution.
 
@@ -175,7 +175,7 @@ Phase 1 prototype, plug-in agent registry, and Streamlit UI implemented in deter
 
 The following video demonstrates the project's functionality and overall implementation.
 
-**Project Demo:** [Watch the Ralypto Demonstration](project-demo.mp4)
+**Project Demo:** [Watch the ProcureAgents Demonstration](project-demo.mp4)
 
 ---
 
@@ -217,7 +217,8 @@ University Track
 
 <div align="center">
 
-**RALYPTO**
+**ProcureAgents**  
+*Team Ralypto*
 
 *Solve Today, Build Tomorrow.*
 

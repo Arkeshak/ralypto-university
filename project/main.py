@@ -1,4 +1,4 @@
-"""ProcureAgents - Ralypto, Innodata AI Catalyst '26.
+"""ProcureAgents - Team Ralypto, Innodata AI Catalyst '26.
 
 Commands:
   python project/main.py demo        seed a synthetic ERP, run the agents, approve one PO, print trace

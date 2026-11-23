@@ -76,7 +76,7 @@ def run_human_study_cli(
     scenarios = get_study_scenarios(temp_db, n_scenarios=10)
     
     print(f"\n=======================================================")
-    print(f"  Ralypto · Human Purchaser Evaluation (System C)")
+    print(f"  ProcureAgents · Human Purchaser Evaluation (System C) - Team Ralypto")
     print(f"  Volunteer: {volunteer_name} | Scenarios: {len(scenarios)}")
     print(f"=======================================================\n")
     

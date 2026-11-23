@@ -1,11 +1,11 @@
-"""Streamlit dashboard for Ralypto · ProcureAgents (Innodata AI Catalyst '26).
+"""Streamlit dashboard for ProcureAgents (Innodata AI Catalyst '26) by Team Ralypto.
 
 Pages
 -----
 Overview          – KPI cards + stock risk chart + PO pipeline
 Inventory         – searchable / filterable catalog table
 Purchase Orders   – human approval gate (approve / reject)
-Ask Ralypto       – read-only NL query agent
+Ask ProcureAgents – read-only NL query agent
 Agent Activity    – JSONL trace viewer + audit log
 Evaluation        – benchmark charts and safety/query metrics
 """
@@ -17,6 +17,7 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+# pyrefly: ignore[missing-import]
 import streamlit as st
 
 # ── make sure project root is importable ───────────────────────────────────────
@@ -35,7 +36,7 @@ from procure.query import ask
 
 # ── page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Ralypto · ProcureAgents",
+    page_title="ProcureAgents · Team Ralypto",
     page_icon="🛒",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -691,7 +692,7 @@ def render_purchase_orders(acting_user: str, acting_role: str) -> None:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# PAGE: ASK RALYPTO
+# PAGE: ASK PROCUREAGENTS
 # ══════════════════════════════════════════════════════════════════════════════
 EXAMPLE_QUESTIONS = [
     "Which items are below the reorder point?",
@@ -710,7 +711,7 @@ EXAMPLE_QUESTIONS = [
 def render_query() -> None:
     page_heading(
         "Read-only ERP assistant",
-        "Ask Ralypto",
+        "Ask ProcureAgents",
         "Ask a natural-language question about inventory, sales, expiry, or suppliers. All queries are read-only.",
     )
 
@@ -1198,8 +1199,8 @@ def _ma_wins_paired(key: str, mean_diff: float) -> bool:
 with st.sidebar:
     st.markdown(
         '<div class="brand-wrap">'
-        '<div class="brand-logo">RALYPTO</div>'
-        '<div class="brand-sub">AI Procurement Workspace</div>'
+        '<div class="brand-logo">ProcureAgents</div>'
+        '<div class="brand-sub">Team Ralypto · Innodata \'26</div>'
         "</div>",
         unsafe_allow_html=True,
     )
@@ -1211,7 +1212,7 @@ with st.sidebar:
             "🏠 Overview",
             "📦 Inventory",
             "🛒 Purchase Orders",
-            "💬 Ask Ralypto",
+            "💬 Ask ProcureAgents",
             "📜 Agent Activity",
             "📊 Evaluation",
         ],
@@ -1253,7 +1254,8 @@ with st.sidebar:
 
     st.markdown(
         f'<div class="sidebar-note">'
-        f"Ralypto · University of Kelaniya<br>"
+        f"ProcureAgents · Team Ralypto<br>"
+        f"University of Kelaniya<br>"
         f"Innodata AI Catalyst '26<br>"
         f"LLM: {env.llm.provider} · offline mode<br>"
         f"DB: demo.db · {env.today} (today)"
@@ -1271,7 +1273,7 @@ elif page == "📦 Inventory":
     render_inventory()
 elif page == "🛒 Purchase Orders":
     render_purchase_orders(acting_user, acting_role)
-elif page == "💬 Ask Ralypto":
+elif page == "💬 Ask ProcureAgents":
     render_query()
 elif page == "📜 Agent Activity":
     render_activity()
