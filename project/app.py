@@ -19,6 +19,7 @@ if HERE not in sys.path:
 import pandas as pd  # noqa: E402
 import streamlit as st  # noqa: E402
 
+from procure.models import CaseFile, DraftPO, Message  # noqa: E402
 from ui import pages_eval, pages_gov, pages_ops, state  # noqa: E402
 from ui import theme as T  # noqa: E402
 
@@ -46,41 +47,46 @@ def demo():
     left, right = st.columns([3, 2])
     graph_slot = right.empty()
     visited: set = set()
-    case = None
+    case: CaseFile | None = None
     with left:
         s1 = st.status("Step 1-4: agents run as buyer 'alice'", expanded=True)
         for kind, item in svc.run_case_stream("alice", target.sku):
-            if kind == "msg":
+            if kind == "msg" and isinstance(item, Message):
                 visited.add(item.author)
                 pages_ops.render_step(item, s1)
                 graph_slot.graphviz_chart(pages_ops.workflow_dot(visited, set()), use_container_width=True)
-            else:
+            elif isinstance(item, CaseFile):
                 case = item
+        if case is None:
+            st.warning("No case result was produced. Try another alert.")
+            return
         s1.update(label=f"Agents finished: {case.status}", state="complete")
         st.session_state["last_case"] = case.task_id
-        if case.status != "pending_approval":
+        if case.status != "pending_approval" or case.po_id is None or case.draft is None:
             st.warning(f"The case ended as '{case.status}' ({'; '.join(case.notes)}). Try another alert.")
             return
+        po_id: int = case.po_id
+        draft: DraftPO = case.draft
         s2 = st.status("Step 5: approval attempts", expanded=True)
         with s2:
             try:
-                svc.approve("alice", case.po_id)
+                svc.approve("alice", po_id)
                 st.error("A buyer approved a PO - this must never happen.")
             except Exception as e:
                 T.blocked(f"Buyer 'alice' tried to approve: {e}")
-            st.write(f"Approver 'bob' reviews PO #{case.po_id}: {case.draft.qty} x {case.draft.supplier_name} = "
-                     f"{T.money(case.draft.total)}")
-            res = svc.approve("bob", case.po_id, "approved in live demo")
-            st.success(f"PO #{case.po_id} -> {res}")
-        s2.update(label=f"Step 5: approved by bob, PO #{case.po_id} {res}", state="complete")
+            st.write(f"Approver 'bob' reviews PO #{po_id}: {draft.qty} x {draft.supplier_name} = "
+                     f"{T.money(draft.total)}")
+            res = svc.approve("bob", po_id, "approved in live demo")
+            st.success(f"PO #{po_id} -> {res}")
+        s2.update(label=f"Step 5: approved by bob, PO #{po_id} {res}", state="complete")
         visited.add("human_approver")
         graph_slot.graphviz_chart(pages_ops.workflow_dot(visited, set()), use_container_width=True)
         st.markdown("**Step 6: audit trail for this PO** (append-only)")
-        trail = pd.DataFrame(svc.audit("bob", po_id=case.po_id))
+        trail = pd.DataFrame(svc.audit("bob", po_id=po_id))
         st.dataframe(trail[["id", "ts", "actor", "action", "detail"]], hide_index=True, use_container_width=True)
         d1, d2, _ = st.columns([1, 1, 3])
-        d1.download_button("PO as PDF", svc.po_pdf("bob", case.po_id), f"PO_{case.po_id}.pdf", "application/pdf")
-        d2.download_button("PO as CSV", svc.po_csv("bob", case.po_id), f"PO_{case.po_id}.csv", "text/csv")
+        d1.download_button("PO as PDF", svc.po_pdf("bob", po_id), f"PO_{po_id}.pdf", "application/pdf")
+        d2.download_button("PO as CSV", svc.po_csv("bob", po_id), f"PO_{po_id}.csv", "text/csv")
 
 
 # ------------------------------------------------------------------ navigation
@@ -112,8 +118,9 @@ with st.sidebar:
     current = st.session_state.get("acting_user", "alice")
     picked = st.selectbox("Acting user (role)", names, index=names.index(current) if current in names else 0,
                           format_func=lambda n: f"{n} ({users[n]})")
-    st.session_state["acting_user"] = picked
-    can = [a for a in ["run_case", "approve", "change_settings"] if svc.can(picked, a)]
+    user_name = str(picked or "alice")
+    st.session_state["acting_user"] = user_name
+    can = [a for a in ["run_case", "approve", "change_settings"] if svc.can(user_name, a)]
     st.caption("Can: view, query" + (", " + ", ".join(x.replace("_", " ") for x in can) if can else ""))
     st.markdown(f'<div class="pa-mode">Mode: {T.esc(svc.env.llm.mode)}<br>ERP day {svc.env.today} - '
                 f'{T.esc(svc.env.meta("profile"))}</div>', unsafe_allow_html=True)

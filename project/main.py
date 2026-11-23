@@ -71,10 +71,12 @@ def cmd_simulate(args):
         if c.notes:
             line += "  " + "; ".join(c.notes)[:120]
         print(line)
-    pend = [c for c in cases if c.status == "pending_approval"]
+    pend = [c for c in cases if c.status == "pending_approval" and c.po_id is not None]
     print(f"\n{len(cases)} alerts processed, {len(pend)} POs awaiting approval. Trace: {trace}")
     if pend and args.approve_first:
-        print(f"Approving PO#{pend[0].po_id} as 'bob' (approver):", svc.approve("bob", pend[0].po_id))
+        po_id = pend[0].po_id
+        if po_id is not None:
+            print(f"Approving PO#{po_id} as 'bob' (approver):", svc.approve("bob", po_id))
     A.Env(DB).close()
     svc.close()
     return 0
