@@ -18,12 +18,16 @@ from . import theme as T
 SYS_COLOR = {"multi_agent": T.PRIMARY, "single_agent": T.AMBER, "rule_based": T.GREY, "human": T.GREEN}
 
 
-def _runs():
-    root = results_root()
-    if not os.path.isdir(root):
-        return []
-    runs = [d for d in os.listdir(root) if os.path.exists(os.path.join(root, d, "summary.json"))]
-    return sorted(runs, reverse=True)
+def _runs() -> dict:
+    """Benchmark runs in results/ (local) and samples/benchmark/ (committed), newest first: name -> path."""
+    roots = [results_root(), os.path.join(os.path.dirname(results_root()), "samples", "benchmark")]
+    found = {}
+    for root in roots:
+        if os.path.isdir(root):
+            for d in os.listdir(root):
+                if os.path.exists(os.path.join(root, d, "summary.json")):
+                    found.setdefault(d, os.path.join(root, d))
+    return dict(sorted(found.items(), reverse=True))
 
 
 def _ci_frame(ov: dict, systems: list, metric: str) -> pd.DataFrame:
@@ -55,8 +59,8 @@ def benchmark():
     if not runs:
         T.empty("No benchmark run found. Run:  python project/main.py benchmark --profile supermarket --repeats 3 --seed 1")
         return
-    run = st.selectbox("Run", runs)
-    path = os.path.join(results_root(), run)
+    run = st.selectbox("Run", list(runs))
+    path = runs[run]
     s = load_run(path)
     cfg, ov = s["config"], s["overall"]
     systems = cfg["systems_run"]
