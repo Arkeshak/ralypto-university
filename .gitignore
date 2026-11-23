@@ -35,4 +35,4 @@ outputs/local/
 project/data/
 
 # Benchmark working output (curated samples live in samples/)
-results/demo/
+results/

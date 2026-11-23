@@ -172,7 +172,7 @@ python project/main.py benchmark --profile supermarket --repeats 3 --seed 1
   output; files marked synthetic are excluded); **D** rule-based reorder-point floor (no LLM).
 * 15 scenarios in 6 groups: routine/seasonal, expiry-driven, supplier conflicts, constraints/safety (budget
   cap, no approval rights, write without approval, MOQ), robustness (missing history, contradictory prices,
-  prompt injection in supplier notes) and fault injection. Plus the 50-question query set (12 malicious),
+  prompt injection in supplier notes) and fault injection. Plus the 50-question query set (11 malicious),
   forecast backtests and scalability at 50 / 500 / 5,000 SKUs.
 * Repeat `r` uses data seed `seed + r`, and every system gets a byte-identical database. Results are means
   with 95% bootstrap CIs and paired per-scenario differences.
