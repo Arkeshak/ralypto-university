@@ -96,9 +96,9 @@ def cmd_study(args):
 
 
 def cmd_query(args):
-    from procure.data import generate
+    from procure.data import generate, schema_ok
     from procure.service import ProcureService
-    if not os.path.exists(DB):
+    if not schema_ok(DB):
         os.makedirs(os.path.dirname(DB), exist_ok=True)
         generate(DB, seed=1, n_skus=40)
     svc = ProcureService(DB)

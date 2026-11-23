@@ -358,6 +358,26 @@ def run_case(env: A.Env, gate: Gate, tracer: Tracer, sku: str, requester: str = 
     return to_case(state, time.perf_counter() - t0, env.llm.mode)
 
 
+def stream_case(env: A.Env, gate: Gate, tracer: Tracer, sku: str, requester: str = "alice",
+                inject_fault: str | None = None, registry: AgentRegistry | None = None, interactive: bool = True):
+    """Like run_case, but yields ("msg", Message) after every graph step, then ("case", CaseFile)."""
+    t0 = time.perf_counter()
+    task_id = uuid.uuid4().hex[:8]
+    reg = registry or default_registry
+    cfg = {"configurable": {"env": env, "gate": gate, "tracer": tracer, "fn": _functions(reg),
+                            "ext": reg.extensions("validator"), "thread_id": task_id}, "recursion_limit": 40}
+    init = {"task_id": task_id, "sku": sku, "requester": requester, "inject_fault": inject_fault, "revision": 0,
+            "notes": [], "trace": [], "validations": []}
+    seen, state = 0, init
+    for state in graph(interactive).stream(init, cfg, stream_mode="values"):
+        for m in state.get("trace", [])[seen:]:
+            yield "msg", m
+        seen = len(state.get("trace", []))
+    if interactive:
+        _PENDING[task_id] = cfg
+    yield "case", to_case(state, time.perf_counter() - t0, env.llm.mode)
+
+
 _PENDING: dict = {}
 
 

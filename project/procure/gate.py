@@ -8,8 +8,10 @@ append-only audit row naming who or what decided it.
 """
 from __future__ import annotations
 
+import functools
 import json
 import sqlite3
+import threading
 import time
 from typing import Callable, Optional
 
@@ -35,6 +37,7 @@ class Gate:
     def __init__(self, db_path: str):
         self.db_path = db_path
         self.db = sqlite3.connect(db_path, check_same_thread=False, timeout=30)
+        self._lock = threading.RLock()  # one connection shared by parallel cases: serialise every use
         self.db.row_factory = sqlite3.Row
 
     def close(self):
@@ -175,3 +178,16 @@ class Gate:
         r = self.db.execute("SELECT p.*, s.name supplier, l.sku, l.qty, l.unit_price FROM pos p LEFT JOIN suppliers s "
                             "ON s.id=p.supplier_id LEFT JOIN po_lines l USING(po_id) WHERE p.po_id=?", (po_id,)).fetchone()
         return dict(r) if r else None
+
+
+def _locked(fn):
+    @functools.wraps(fn)
+    def wrapper(self, *a, **kw):
+        with self._lock:
+            return fn(self, *a, **kw)
+    return wrapper
+
+
+for _name in ["role", "log_event", "status", "committed_spend", "submit", "decide", "edit", "cancel", "receive",
+              "audit_rows", "po"]:
+    setattr(Gate, _name, _locked(getattr(Gate, _name)))

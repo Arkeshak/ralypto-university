@@ -197,6 +197,21 @@ def generate(path: str, seed: int = 1, n_skus: int = 40, profile: str = "superma
     return World(path, seed, today, truth, unit_cost, shelf, prof, opts)
 
 
+def schema_ok(path: str) -> bool:
+    """True if `path` holds a database with every table of the current schema."""
+    if not os.path.exists(path):
+        return False
+    import re
+    need = set(re.findall(r"CREATE TABLE (\w+)", SCHEMA))
+    try:
+        c = sqlite3.connect(f"file:{os.path.abspath(path)}?mode=ro", uri=True)
+        have = {r[0] for r in c.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        c.close()
+    except sqlite3.DatabaseError:
+        return False
+    return need <= have
+
+
 READ_ACTIONS = {sqlite3.SQLITE_SELECT, sqlite3.SQLITE_READ, sqlite3.SQLITE_FUNCTION}
 HIDDEN_TABLES = {"users", "audit", "gate_ops"}
 

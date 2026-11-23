@@ -16,7 +16,7 @@ from . import agents as A
 from .gate import STATES, Gate, GateError
 from .llm import LLM
 from .models import CaseFile
-from .orchestrator import Tracer, is_interrupted, resume_approval, run_case
+from .orchestrator import Tracer, is_interrupted, resume_approval, run_case, stream_case
 from .query import ask
 from .registry import default_registry, default_tool_registry
 
@@ -115,6 +115,15 @@ class ProcureService:
                         interactive=True)
         self.cases[case.task_id] = case
         return case
+
+    def run_case_stream(self, user: str, sku: str, inject_fault: Optional[str] = None):
+        """Generator for the UI: yields ("msg", Message) per agent step, then ("case", CaseFile)."""
+        self.require(user, "run_case")
+        self.env.refresh()
+        for kind, item in stream_case(self.env, self.gate, self.tracer, sku, requester=user, inject_fault=inject_fault):
+            if kind == "case":
+                self.cases[item.task_id] = item
+            yield kind, item
 
     def query(self, user: str, question: str) -> dict:
         self.require(user, "query")

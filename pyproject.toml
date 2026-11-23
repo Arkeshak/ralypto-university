@@ -10,3 +10,6 @@ ignore = ["E731"]
 [tool.pytest.ini_options]
 testpaths = ["project/tests"]
 filterwarnings = ["ignore::DeprecationWarning", "ignore::PendingDeprecationWarning"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["procure", "ui"]
