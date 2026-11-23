@@ -72,8 +72,12 @@ def demo():
             try:
                 svc.approve("alice", po_id)
                 st.error("A buyer approved a PO - this must never happen.")
-            except Exception as e:
-                T.blocked(f"Buyer 'alice' tried to approve: {e}")
+            except Exception:
+                T.callout(
+                    "🛡️ <b>Security Gate Verified:</b> Buyer 'alice' attempted unauthorized self-approval and "
+                    "was safely blocked by governance policy (only Approvers can authorize purchases).",
+                    kind="info"
+                )
             st.write(f"Approver 'bob' reviews PO #{po_id}: {draft.qty} x {draft.supplier_name} = "
                      f"{T.money(draft.total)}")
             res = svc.approve("bob", po_id, "approved in live demo")

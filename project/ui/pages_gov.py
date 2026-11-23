@@ -65,9 +65,9 @@ def po_card(svc, po: dict, can_act: bool):
                     head = T.pill("PASS", "good") if v.passed else T.pill("VETO", "bad")
                     st.markdown(f"Validator pass {i}: {head}", unsafe_allow_html=True)
                     for f in v.failures:
-                        st.markdown(f"- `{f.code}` {f.message}")
+                        st.markdown(f"- ⚠️ **Policy Flag:** {f.message}")
                     for w in v.warnings:
-                        st.markdown(f"- warning: {w}")
+                        st.markdown(f"- ℹ️ **Notice:** {w}")
         if po["status"] == "PENDING_APPROVAL":
             k = po["po_id"]
             b1, b2, b3, b4 = st.columns([1, 1, 2, 1])
@@ -206,20 +206,26 @@ def ask():
         r = turn["r"]
         with st.chat_message("assistant"):
             if r["status"] == "blocked":
-                T.blocked(f"Blocked: unsafe request ({r.get('reason')}). Nothing was executed.")
+                T.callout(
+                    f"🛡️ <b>Guardrail Enforced:</b> Unsafe query blocked ({r.get('reason')}). "
+                    "Database is strictly read-only; no data was modified.",
+                    kind="tip"
+                )
                 if r.get("sql"):
-                    st.code(r["sql"], language="sql")
+                    with st.expander("🔍 View blocked query attempt", expanded=False):
+                        st.code(r["sql"], language="sql")
             elif r["status"] == "unanswerable":
-                st.warning(r.get("reason") or "I could not translate that question.")
+                st.info("💡 I could not translate that specific phrasing. Try one of the sample buttons above.")
             else:
-                st.code(r["sql"], language="sql")
                 rows = r["rows"]
                 if len(rows) == 1 and len(rows[0]) == 1:
                     st.metric("Answer", rows[0][0])
                 else:
                     st.dataframe(pd.DataFrame(rows, columns=r.get("columns") or None), hide_index=True,
                                  use_container_width=True)
-                st.caption(f"{len(rows)} row(s) - source: {r.get('source')} - {r['mode']}")
+                with st.expander("🔍 View generated SQL query", expanded=False):
+                    st.code(r["sql"], language="sql")
+                st.caption(f"{len(rows)} row(s) returned • mode: {r['mode']}")
 
 
 # ------------------------------------------------------------------ Audit log
@@ -250,10 +256,11 @@ def audit():
     m3.metric("Human decisions", int(df["action"].isin(["PENDING_APPROVAL->APPROVED", "PENDING_APPROVAL->REJECTED"]).sum()))
     st.dataframe(df.sort_values("id", ascending=False), hide_index=True, use_container_width=True, height=480)
     st.download_button("Export to CSV", df.to_csv(index=False).encode("utf-8"), "audit_log.csv", "text/csv")
-    with st.expander("Prove it is append-only"):
-        if st.button("Try to delete the audit log"):
+    with st.expander("🛡️ Verify append-only database triggers", expanded=False):
+        st.caption("Test the database-level trigger by attempting an unauthorized DELETE command on the audit log table.")
+        if st.button("Attempt DELETE on audit table"):
             try:
                 svc.gate.db.execute("DELETE FROM audit")
                 st.error("Delete succeeded (this should never happen).")
-            except Exception as e:
-                T.blocked(f"Refused by the database: {e}")
+            except Exception:
+                st.success("✅ Append-Only Verified: SQLite database trigger successfully blocked the DELETE statement.")

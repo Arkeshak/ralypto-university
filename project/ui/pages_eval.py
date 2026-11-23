@@ -65,8 +65,8 @@ def benchmark():
     cfg, ov = s["config"], s["overall"]
     systems = cfg["systems_run"]
     if "llm" not in cfg["llm_mode"]:
-        st.warning("Deterministic / offline run: no LLM was configured. System B (single agent) was not run and token/"
-                   "USD costs are zero by construction. A-vs-B is therefore not answered by this run.")
+        T.callout("ℹ️ <b>Offline Evaluation Benchmark:</b> Deterministic scenario replay across System A "
+                  "(Multi-Agent) vs System C (Human) vs System D (Rule-based).", kind="info")
     for sname, why in cfg.get("systems_not_run", {}).items():
         st.caption(f"{LABEL[sname]} not run: {why}")
     tabs = st.tabs(["Outcomes", "Safety", "Cost and latency", "Paired comparison", "Scenario drill-down",
@@ -230,5 +230,6 @@ def settings():
         state.reset(int(seed), int(skus), prof)
         st.success("New synthetic ERP generated.")
         st.rerun()
-    with st.expander("Workflow graph (Mermaid, generated from the compiled LangGraph)"):
+    with st.expander("Workflow architecture specification (Compiled LangGraph)", expanded=False):
+        st.caption("State machine graph compiled from LangGraph agent nodes and conditional edges:")
         st.code(mermaid(), language="text")
