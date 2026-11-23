@@ -227,7 +227,7 @@ def settings():
     prof = c[2].selectbox("Profile", ["supermarket", "pharmacy", "hardware"], disabled=not is_admin)
     c[3].write("")
     if c[3].button("Regenerate ERP", disabled=not is_admin, use_container_width=True):
-        state.reset(int(seed), int(skus), prof)
+        state.reset(seed, skus, prof)
         st.success("New synthetic ERP generated.")
         st.rerun()
     with st.expander("Workflow architecture specification (Compiled LangGraph)", expanded=False):

@@ -23,7 +23,7 @@ import urllib.error
 import urllib.request
 from typing import Optional, Type
 
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 
 OFFLINE_LABEL = "deterministic (offline, no LLM)"
 
@@ -137,7 +137,7 @@ class LLM:
                     self.tokens_out += tout
                     self.latency_s += time.perf_counter() - t0
                 return text
-            except (urllib.error.URLError, TimeoutError, OSError, KeyError, ValueError, json.JSONDecodeError):
+            except (urllib.error.URLError, TimeoutError, OSError, KeyError, ValueError):
                 with self._lock:
                     self.failures += 1
                     self.latency_s += time.perf_counter() - t0
@@ -157,7 +157,7 @@ class LLM:
             try:
                 obj = json.loads(text[text.index("{"): text.rindex("}") + 1])
                 return schema.model_validate(obj)
-            except (ValueError, ValidationError) as e:
+            except ValueError as e:
                 if attempt < max_repairs:
                     with self._lock:
                         self.repairs += 1

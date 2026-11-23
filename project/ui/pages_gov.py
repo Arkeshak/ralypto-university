@@ -81,7 +81,7 @@ def po_card(svc, po: dict, can_act: bool):
                 q = st.number_input("New quantity", min_value=1, value=int(po["qty"]), key=f"q{k}")
                 if st.button("Save edit (re-validated)", key=f"ed{k}"):
                     try:
-                        v = svc.edit(state.user(), k, int(q), reason or "approver edit")
+                        v = svc.edit(state.user(), k, q, reason or "approver edit")
                         if v.passed:
                             st.session_state["flash"] = ("ok", f"PO #{k} quantity changed to {q} (validator passed).")
                         else:
@@ -252,8 +252,8 @@ def audit():
     df = df.assign(detail=df["detail"].map(lambda d: json.dumps(json.loads(d)) if d else ""))
     m1, m2, m3 = st.columns(3)
     m1.metric("Rows shown", len(df))
-    m2.metric("Denied requests", int(df["action"].str.startswith("DENIED").sum()))
-    m3.metric("Human decisions", int(df["action"].isin(["PENDING_APPROVAL->APPROVED", "PENDING_APPROVAL->REJECTED"]).sum()))
+    m2.metric("Denied requests", df["action"].str.startswith("DENIED").sum())
+    m3.metric("Human decisions", df["action"].isin(["PENDING_APPROVAL->APPROVED", "PENDING_APPROVAL->REJECTED"]).sum())
     st.dataframe(df.sort_values("id", ascending=False), hide_index=True, use_container_width=True, height=480)
     st.download_button("Export to CSV", df.to_csv(index=False).encode("utf-8"), "audit_log.csv", "text/csv")
     with st.expander("🛡️ Verify append-only database triggers", expanded=False):
