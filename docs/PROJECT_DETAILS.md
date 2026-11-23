@@ -26,9 +26,11 @@ Cut stockouts and expiry losses with explainable recommendations; keep every act
 | Provider-agnostic LLM wrapper (retries, timeout, token/cost counters); LLM only writes rationale text or advisory critique | Implemented, **never run against a live API** |
 | System B single-agent LLM baseline (same tools, validator, gate) | Implemented, **not run** (needs LLM credentials) |
 | Evaluation harness: replay simulation, oracle PO accuracy, WAPE, safety suite, 50-question query set, scalability, bootstrap CIs | Implemented |
-| Business-type profiles (supermarket, pharmacy, hardware) | Partial: profiles change categories, shelf life, service level, review period |
+| Business-type profiles (supermarket, pharmacy, hardware) | Implemented: configurable in CLI (`--profile`), sets categories, perishability, service level, and review period |
+| Plug-in agent & tool registry | Implemented (`procure/registry.py`): modular registration and dynamic swapping of agents without modifying orchestrator |
 | Streamlit chat panel and approval dashboard | Implemented (`project/app.py`) |
-| Human purchaser comparison (System C) | **Not run** |
+| Human purchaser comparison (System C) | Implemented (`procure/human_study.py`, CLI `main.py study`): 10-scenario protocol measuring latency and accuracy against oracle/replay |
+| Supplier recommendation distribution (fairness & bias) | Implemented: tracked in benchmark summary and displayed in Streamlit evaluation dashboard |
 | Sinhala/Tamil input | Future work |
 
 ## Multi-agent architecture
@@ -105,5 +107,5 @@ Synthetic data and simulated suppliers. The oracle reference policy is our own c
 - Secrets only in environment variables (`.env`, git-ignored); none committed.
 - Synthetic data only, no personal data.
 - Agents hold only read-only DB connections; the single write path is `gate.py`.
-- Bias: ranking weights are visible and adjustable. With the default weights the cheap, unreliable supplier is often ranked first, which is a trade-off to review. Per-supplier recommendation frequency is not yet reported.
+- Bias: ranking weights are visible and adjustable. With the default weights the cheap, unreliable supplier is often ranked first, which is a trade-off to review. Per-supplier recommendation frequency is actively tracked in benchmark evaluations and presented in the Streamlit dashboard to audit fairness.
 - Prompt injection: supplier notes are screened with a pattern match (basic, bypassable) and never executed as instructions.

@@ -1,0 +1,12 @@
+{
+  "system": "System C (Human purchasers)",
+  "volunteer": "volunteer_1",
+  "n_scenarios": 10,
+  "unmet_rate": 0.6121605667060213,
+  "overstock_value": 0.0,
+  "expiry_writeoff_value": 3755.9300000000003,
+  "po_accuracy": 0.0,
+  "mean_time_per_task_s": 8.5,
+  "total_time_s": 85.0,
+  "orders_placed": 10
+}

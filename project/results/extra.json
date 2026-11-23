@@ -284,25 +284,25 @@
   "scalability": {
     "50": {
       "cases_run": 43,
-      "generate_s": 0.05,
-      "latency_median_s": 0.0042,
-      "latency_p95_s": 0.005,
+      "generate_s": 0.07,
+      "latency_median_s": 0.005,
+      "latency_p95_s": 0.0061,
       "tokens": 0,
       "usd": 0.0
     },
     "500": {
       "cases_run": 100,
-      "generate_s": 0.25,
-      "latency_median_s": 0.0043,
-      "latency_p95_s": 0.0051,
+      "generate_s": 0.36,
+      "latency_median_s": 0.0049,
+      "latency_p95_s": 0.0065,
       "tokens": 0,
       "usd": 0.0
     },
     "5000": {
       "cases_run": 100,
-      "generate_s": 2.39,
-      "latency_median_s": 0.0054,
-      "latency_p95_s": 0.0064,
+      "generate_s": 2.57,
+      "latency_median_s": 0.0066,
+      "latency_p95_s": 0.0092,
       "tokens": 0,
       "usd": 0.0
     }

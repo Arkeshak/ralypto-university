@@ -1,6 +1,7 @@
 """Evaluation harness: every number written to results/ is computed here, never typed in."""
 from __future__ import annotations
 
+import gc
 import json
 import math
 import os
@@ -8,6 +9,7 @@ import random
 import shutil
 import sqlite3
 import statistics
+import tempfile
 import time
 import platform
 
@@ -39,7 +41,8 @@ def replay(world: World, db_path: str, skus: list, orders: dict) -> dict:
             sid, qty, _ = orders[sku]
             p = db.execute("SELECT p.lead_time_days l, s.reliability r FROM prices p JOIN suppliers s ON s.id=p.supplier_id "
                            "WHERE p.sku=? AND p.supplier_id=?", (sku, sid)).fetchone()
-            arrival = world.delay(sid, sku, p["r"], p["l"])
+            if p:
+                arrival = world.delay(sid, sku, p["r"], p["l"])
         for d in range(REPLAY_DAYS):
             day = world.today + d
             if arrival is not None and d == arrival:
@@ -138,13 +141,18 @@ def run_benchmark(outdir: str, seeds=(1, 2, 3, 4, 5), n_skus=40, profile="superm
             orders, _ = _approve_all(gate, cases)
             rp = replay(world, path, skus, orders)
             acc = statistics.mean(po_accurate(refs[c.sku], orders.get(c.sku)) for c in cases) if cases else 0.0
+            supplier_counts = {}
+            for sid, _, _ in orders.values():
+                supplier_counts[sid] = supplier_counts.get(sid, 0) + 1
             per[name].append({"seed": seed, "n_cases": len(cases), **rp, "po_accuracy": acc,
                               "escalation_rate": sum(c.status == "escalated" for c in cases) / max(1, len(cases)),
                               "fallback_rate": sum(c.used_fallback for c in cases) / max(1, len(cases)),
                               "latency_median_s": statistics.median(lat) if lat else 0,
                               "latency_p95_s": sorted(lat)[int(0.95 * (len(lat) - 1))] if lat else 0,
-                              "tokens": llm_s.tokens_in + llm_s.tokens_out, "cost_usd": llm_s.cost_usd})
+                              "tokens": llm_s.tokens_in + llm_s.tokens_out, "cost_usd": llm_s.cost_usd,
+                              "supplier_recommendations": supplier_counts})
             env.db.close()
+            gate.close()
     metrics = ["unmet_rate", "overstock_value", "expiry_writeoff_value", "po_accuracy", "latency_median_s", "tokens", "cost_usd"]
     summary = {}
     for name, rows in per.items():
@@ -152,6 +160,15 @@ def run_benchmark(outdir: str, seeds=(1, 2, 3, 4, 5), n_skus=40, profile="superm
         for m in metrics:
             v = [r[m] for r in rows]
             summary[name][m] = {"mean": statistics.mean(v), "ci95": bootstrap_ci(v)}
+        total_recs = {}
+        for r in rows:
+            for sid, count in r.get("supplier_recommendations", {}).items():
+                total_recs[sid] = total_recs.get(sid, 0) + count
+        total_orders = sum(total_recs.values()) or 1
+        summary[name]["supplier_distribution"] = {
+            sid: {"count": cnt, "pct": round(cnt / total_orders, 3)}
+            for sid, cnt in sorted(total_recs.items())
+        }
     paired = {}
     if "rule_based" in per:
         for m in ["unmet_rate", "overstock_value", "expiry_writeoff_value", "po_accuracy"]:
@@ -163,12 +180,15 @@ def run_benchmark(outdir: str, seeds=(1, 2, 3, 4, 5), n_skus=40, profile="superm
                       "note": "single_agent skipped: no LLM configured" if not llm.available else ""},
            "per_seed": per, "summary": summary, "paired": paired}
     json.dump(out, open(os.path.join(outdir, "benchmark.json"), "w"), indent=2)
+    gc.collect()
     shutil.rmtree(work, ignore_errors=True)
     return out
 
 
 # ------------------------------------------------------------------ forecast quality
-def forecast_quality(n_skus=60, seed=1, workdir="results/_fq") -> dict:
+def forecast_quality(n_skus=60, seed=1, workdir=None) -> dict:
+    if workdir is None:
+        workdir = os.path.join(tempfile.gettempdir(), "procure_fq")
     os.makedirs(workdir, exist_ok=True)
     path = os.path.join(workdir, "fq.db")
     generate(path, seed, n_skus)
@@ -190,14 +210,18 @@ def forecast_quality(n_skus=60, seed=1, workdir="results/_fq") -> dict:
             a_sum["naive"] += abs(a - last)
             a_sum["seasonal_naive"] += abs(a - h.get(cut - 7 + (i % 7), 0))
     env.db.close()
+    gc.collect()
     shutil.rmtree(workdir, ignore_errors=True)
     return {k: v / total for k, v in a_sum.items()}
 
 
 # ------------------------------------------------------------------ safety suite
-def safety_suite(workdir="results/_safety") -> dict:
+def safety_suite(workdir=None) -> dict:
+    if workdir is None:
+        workdir = os.path.join(tempfile.gettempdir(), "procure_safety")
     os.makedirs(workdir, exist_ok=True)
     res, unsafe = {}, 0
+    envs_to_close, gates_to_close = [], []
 
     counter = [0]
 
@@ -205,7 +229,11 @@ def safety_suite(workdir="results/_safety") -> dict:
         counter[0] += 1
         p = os.path.join(workdir, f"s{counter[0]}.db")
         w = generate(p, kw.pop("seed", 7), kw.pop("n", 30), **kw)
-        return w, A.Env(p), Gate(p), p
+        e = A.Env(p)
+        g = Gate(p)
+        envs_to_close.append(e)
+        gates_to_close.append(g)
+        return w, e, g, p
 
     # 1. attempts to write without approval must all fail
     w, env, gate, p = fresh()
@@ -261,7 +289,16 @@ def safety_suite(workdir="results/_safety") -> dict:
     fcs = [A.forecaster(env2, s) for s in w2.truth]
     res["corrupt_history_flagged"] = all(any("corrupt" in f or "missing" in f or "short" in f for f in fc.flags) for fc in fcs)
     res["unsafe_action_rate"] = unsafe / attempts
-    import gc
+    for e in envs_to_close:
+        try:
+            e.db.close()
+        except Exception:
+            pass
+    for g in gates_to_close:
+        try:
+            g.close()
+        except Exception:
+            pass
     gc.collect()
     shutil.rmtree(workdir, ignore_errors=True)
     return res
@@ -313,7 +350,9 @@ def query_questions(env: A.Env):
     return qs[:50]
 
 
-def query_eval(workdir="results/_q") -> dict:
+def query_eval(workdir=None) -> dict:
+    if workdir is None:
+        workdir = os.path.join(tempfile.gettempdir(), "procure_q")
     os.makedirs(workdir, exist_ok=True)
     p = os.path.join(workdir, "q.db")
     generate(p, 3, 40)
@@ -344,6 +383,7 @@ def query_eval(workdir="results/_q") -> dict:
         except UnsafeQuery:
             blocked_sql += 1
     env.db.close()
+    gc.collect()
     shutil.rmtree(workdir, ignore_errors=True)
     return {"n_questions": len(qs), "execution_accuracy": ok / n_norm, "n_normal": n_norm,
             "adversarial_blocked": blocked_ok, "n_adversarial": n_adv,
@@ -351,7 +391,9 @@ def query_eval(workdir="results/_q") -> dict:
 
 
 # ------------------------------------------------------------------ scalability
-def scale_test(sizes=(50, 500, 5000), max_cases=100, workdir="results/_scale") -> dict:
+def scale_test(sizes=(50, 500, 5000), max_cases=100, workdir=None) -> dict:
+    if workdir is None:
+        workdir = os.path.join(tempfile.gettempdir(), "procure_scale")
     os.makedirs(workdir, exist_ok=True)
     out = {}
     for n in sizes:
@@ -370,5 +412,7 @@ def scale_test(sizes=(50, 500, 5000), max_cases=100, workdir="results/_scale") -
                        "latency_median_s": round(statistics.median(lat), 4),
                        "latency_p95_s": round(sorted(lat)[int(0.95 * (len(lat) - 1))], 4), "tokens": 0, "usd": 0.0}
         env.db.close()
+        gate.close()
+    gc.collect()
     shutil.rmtree(workdir, ignore_errors=True)
     return out

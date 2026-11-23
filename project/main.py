@@ -31,7 +31,7 @@ RESULTS = os.path.join(HERE, "results")
 def cmd_demo(args):
     os.makedirs(os.path.dirname(DB), exist_ok=True)
     os.makedirs(RESULTS, exist_ok=True)
-    generate(DB, seed=args.seed, n_skus=args.skus)
+    generate(DB, seed=args.seed, n_skus=args.skus, profile=args.profile)
     env, gate = A.Env(DB, LLM()), Gate(DB)
     trace = os.path.join(RESULTS, "demo_trace.jsonl")
     if os.path.exists(trace):
@@ -48,30 +48,45 @@ def cmd_demo(args):
     print(f"\n{len(pend)} POs awaiting approval. Trace: {trace}")
     if pend:
         print("Demo approval by user 'bob' (approver):", gate.decide(pend[0].po_id, "bob", True))
+    env.db.close()
+    gate.close()
 
 
 def cmd_ask(args):
     if not os.path.exists(DB):
-        cmd_demo(argparse.Namespace(seed=1, skus=40))
-    print(json.dumps(ask(A.Env(DB, LLM()), args.question), indent=2, default=str))
+        cmd_demo(argparse.Namespace(seed=1, skus=40, profile="supermarket"))
+    env = A.Env(DB, LLM())
+    print(json.dumps(ask(env, args.question), indent=2, default=str))
+    env.db.close()
 
 
 def cmd_approve(args):
+    gate = Gate(DB)
     try:
-        print(Gate(DB).decide(args.po_id, args.user, not args.reject))
+        print(gate.decide(args.po_id, args.user, not args.reject))
     except GateError as e:
         print("DENIED:", e)
+    finally:
+        gate.close()
 
 
 def cmd_bench(args):
     os.makedirs(RESULTS, exist_ok=True)
-    out = run_benchmark(RESULTS, seeds=tuple(range(1, args.seeds + 1)), n_skus=args.skus)
+    out = run_benchmark(RESULTS, seeds=tuple(range(1, args.seeds + 1)), n_skus=args.skus, profile=args.profile)
     extra = {"forecast_wape": forecast_quality(), "safety": safety_suite(), "queries": query_eval(),
              "scalability": scale_test()}
     json.dump(extra, open(os.path.join(RESULTS, "extra.json"), "w"), indent=2, default=str)
     print(json.dumps(out["summary"], indent=2))
     print(json.dumps({k: v for k, v in extra.items() if k != "queries"}, indent=2, default=str))
     print("queries:", {k: v for k, v in extra["queries"].items() if k != "details"})
+
+
+def cmd_study(args):
+    from procure.human_study import run_human_study_cli
+    auto = None
+    if args.auto:
+        auto = [{"qty": 50, "time_s": 8.5}] * 10
+    run_human_study_cli(volunteer_name=args.volunteer, auto_decisions=auto)
 
 
 def main():
@@ -81,6 +96,7 @@ def main():
     d = sub.add_parser("demo")
     d.add_argument("--seed", type=int, default=1)
     d.add_argument("--skus", type=int, default=40)
+    d.add_argument("--profile", default="supermarket", choices=["supermarket", "pharmacy", "hardware"])
     q = sub.add_parser("ask")
     q.add_argument("question")
     a = sub.add_parser("approve")
@@ -90,8 +106,14 @@ def main():
     b = sub.add_parser("bench")
     b.add_argument("--seeds", type=int, default=5)
     b.add_argument("--skus", type=int, default=40)
+    b.add_argument("--profile", default="supermarket", choices=["supermarket", "pharmacy", "hardware"])
+    s = sub.add_parser("study")
+    s.add_argument("--volunteer", default="volunteer_1")
+    s.add_argument("--auto", action="store_true")
     args = p.parse_args()
-    {"demo": cmd_demo, "ask": cmd_ask, "approve": cmd_approve, "bench": cmd_bench}.get(args.cmd, lambda _: p.print_help())(args)
+    {"demo": cmd_demo, "ask": cmd_ask, "approve": cmd_approve, "bench": cmd_bench, "study": cmd_study}.get(
+        args.cmd, lambda _: p.print_help()
+    )(args)
 
 
 if __name__ == "__main__":
