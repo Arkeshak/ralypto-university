@@ -13,3 +13,6 @@ filterwarnings = ["ignore::DeprecationWarning", "ignore::PendingDeprecationWarni
 
 [tool.ruff.lint.isort]
 known-first-party = ["procure", "ui"]
+
+[tool.pyrefly]
+search-path = ["project"]
