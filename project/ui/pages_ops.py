@@ -7,6 +7,7 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
+from procure.models import CaseFile, Message
 from procure.orchestrator import LOW_CONFIDENCE, MAX_REVISIONS
 
 from . import state
@@ -52,6 +53,26 @@ def overview():
     T.header("Operations", "Overview",
              f"Live view of the synthetic ERP (profile {svc.env.meta('profile')}, day {svc.env.today}). "
              "All figures are read through the agents' read-only connection.")
+
+    T.flow_banner(
+        "How ProcureAgents Works",
+        "A multi-agent architecture that automates purchasing decisions while strictly maintaining safety and human authority.",
+        [
+            ("1", "Detect Risk", "Stock Monitor scans ERP inventory levels, reorder thresholds, and expiring batches."),
+            ("2", "AI Agents Decide", "Demand Forecaster (LightGBM) & Supplier Agent run in parallel to plan order & vendor."),
+            ("3", "Safe Approval", "Validator enforces budget caps; authorized approver (bob) signs off on the ERP PO.")
+        ]
+    )
+
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        if st.button("▶ Play 10-Second Guided Demo", type="primary", use_container_width=True):
+            st.switch_page(PAGES["demo"])
+    with col2:
+        if st.button("🔔 Browse Active Inventory Alerts", use_container_width=True):
+            st.switch_page(PAGES["alerts"])
+    st.write("")
+
     inv = inventory_frame(svc)
     exp = expiry_frame(svc, 14)
     open_pos = svc.purchase_orders(state.user(), "PENDING_APPROVAL")
@@ -106,6 +127,11 @@ def alerts():
     T.header("Stock Monitor", "Alerts and cases",
              "Alerts raised by the Stock Monitor agent from stock, reorder points and expiry dates. "
              "Select one and run the agent team on it.")
+    T.callout(
+        "💡 <b>How to test this page:</b> Select any alert below (e.g. <code>low_stock</code>), "
+        "then choose it in the dropdown and click <b>'Run agents'</b> to see AI agents plan demand & draft a PO.",
+        kind="info"
+    )
     al = svc.alerts(state.user())
     if not al:
         T.empty("No alerts: every item is above its reorder point and nothing expires within 14 days.")
@@ -230,16 +256,19 @@ def agent_run():
         graph_slot.graphviz_chart(workflow_dot(visited, failed, "stock_monitor"), use_container_width=True)
         with left:
             status = st.status(f"Running agents on {req['sku']} ...", expanded=True)
-            case = None
+            case: CaseFile | None = None
             for kind, item in svc.run_case_stream(state.user(), req["sku"], req.get("fault")):
-                if kind == "msg":
+                if kind == "msg" and isinstance(item, Message):
                     visited.add(item.author)
                     if (item.author == "validator" and not item.output.get("passed", True)) or "error" in item.output:
                         failed.add(item.author)
                     render_step(item, status)
                     graph_slot.graphviz_chart(workflow_dot(visited, failed), use_container_width=True)
-                else:
+                elif isinstance(item, CaseFile):
                     case = item
+            if case is None:
+                st.warning("No case result was produced.")
+                return
             status.update(label=f"Case {case.task_id} finished: {case.status}",
                           state="complete" if case.status in ("pending_approval", "no_action") else "error")
         st.session_state["last_case"] = case.task_id
@@ -279,9 +308,19 @@ def render_case_summary(case):
         for n in case.notes:
             st.warning(n)
     if case.status == "pending_approval":
-        st.success(f"PO #{case.po_id} is waiting at the human-approval interrupt. Open the Approval dashboard.")
-        if st.button("Go to approval dashboard"):
-            st.switch_page(PAGES["approvals"])
+        T.callout(
+            f"🎉 <b>AI Agents drafted PO #{case.po_id}!</b> It is now waiting at the human approval gate.<br>"
+            "<i>Policy Rule: Buyers cannot self-approve. Approver (bob) must review and sign off.</i>",
+            kind="success"
+        )
+        c_a, c_b = st.columns([1, 1])
+        with c_a:
+            if st.button("👉 Switch to Bob & Open Approval Dashboard", type="primary", use_container_width=True):
+                st.session_state["acting_user"] = "bob"
+                st.switch_page(PAGES["approvals"])
+        with c_b:
+            if st.button("Open Approval Dashboard (current role)", use_container_width=True):
+                st.switch_page(PAGES["approvals"])
 
 
 PAGES: dict = {}  # filled by app.py so pages can link to each other

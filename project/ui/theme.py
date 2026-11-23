@@ -44,8 +44,24 @@ h1, h2, h3 {{ color:{TEXT}; letter-spacing:-0.01em; }}
 .pa-title {{ font-size:1.7rem; font-weight:700; margin:.1rem 0 .2rem 0; color:{TEXT}; }}
 .pa-sub {{ color:{MUTED}; font-size:.93rem; margin-bottom:1.1rem; max-width:70rem; }}
 .pa-card {{ background:{SURFACE}; border:1px solid {BORDER}; border-radius:10px; padding:16px 18px; margin-bottom:12px; }}
+.pa-banner {{ background:linear-gradient(135deg, #F0F7F7 0%, #FFFFFF 100%); border:1px solid #C8DFE1;
+              border-radius:12px; padding:20px 24px; margin-bottom:20px; box-shadow:0 2px 6px rgba(15,92,99,0.04); }}
+.pa-banner h3 {{ margin:0 0 6px 0; color:{PRIMARY_DARK}; font-size:1.25rem; font-weight:700; }}
+.pa-banner p {{ margin:0 0 14px 0; color:{MUTED}; font-size:0.92rem; line-height:1.5; }}
+.pa-flow-steps {{ display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:12px; margin-top:14px; }}
+.pa-flow-step {{ background:#FFFFFF; border:1px solid {BORDER}; border-radius:8px; padding:12px 14px;
+                 box-shadow:0 1px 3px rgba(0,0,0,0.03); }}
+.pa-flow-step .num {{ display:inline-block; width:22px; height:22px; line-height:22px; text-align:center;
+                      background:{PRIMARY}; color:#fff; border-radius:50%; font-size:0.75rem; font-weight:700;
+                      margin-right:6px; }}
+.pa-flow-step .title {{ font-weight:700; font-size:0.88rem; color:{TEXT}; }}
+.pa-flow-step .desc {{ font-size:0.79rem; color:{MUTED}; margin-top:4px; line-height:1.4; }}
+.pa-callout {{ background:#EBF4F5; border-left:4px solid {PRIMARY}; border-radius:0 8px 8px 0; padding:12px 16px;
+               margin:12px 0; font-size:0.88rem; color:{TEXT}; }}
+.pa-callout.tip {{ background:#FFF9E6; border-left-color:{AMBER}; }}
+.pa-callout.success {{ background:#EAF5ED; border-left-color:{GREEN}; }}
 .pa-kpi {{ background:{SURFACE}; border:1px solid {BORDER}; border-radius:10px; padding:14px 16px; height:100%;
-          border-top:3px solid var(--tone); }}
+          border-top:3px solid var(--tone); box-shadow:0 2px 4px rgba(0,0,0,0.02); }}
 .pa-kpi .l {{ color:{MUTED}; font-size:.78rem; font-weight:600; text-transform:uppercase; letter-spacing:.05em; }}
 .pa-kpi .v {{ font-size:1.65rem; font-weight:700; color:{TEXT}; margin-top:4px; }}
 .pa-kpi .s {{ color:{MUTED}; font-size:.8rem; margin-top:2px; }}
@@ -126,3 +142,27 @@ def kv(rows: list):
 
 def money(v) -> str:
     return "-" if v is None else f"{v:,.2f}"
+
+
+def flow_banner(title: str, subtitle: str, steps: list[tuple[str, str, str]]):
+    """Render a clean 3-step workflow banner with numbers, titles, and explanations."""
+    step_html = "".join(
+        f'<div class="pa-flow-step"><span class="num">{esc(num)}</span>'
+        f'<span class="title">{esc(h)}</span><div class="desc">{esc(d)}</div></div>'
+        for num, h, d in steps
+    )
+    st.markdown(
+        f'<div class="pa-banner"><h3>{esc(title)}</h3><p>{esc(subtitle)}</p>'
+        f'<div class="pa-flow-steps">{step_html}</div></div>',
+        unsafe_allow_html=True,
+    )
+
+
+def callout(text: str, kind: str = "info"):
+    """Render a clean callout box (info, tip, or success)."""
+    cls = "pa-callout"
+    if kind == "tip":
+        cls += " tip"
+    elif kind == "success":
+        cls += " success"
+    st.markdown(f'<div class="{cls}">{text}</div>', unsafe_allow_html=True)

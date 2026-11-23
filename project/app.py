@@ -120,12 +120,39 @@ with st.sidebar:
                           format_func=lambda n: f"{n} ({users[n]})")
     user_name = str(picked or "alice")
     st.session_state["acting_user"] = user_name
-    can = [a for a in ["run_case", "approve", "change_settings"] if svc.can(user_name, a)]
-    st.caption("Can: view, query" + (", " + ", ".join(x.replace("_", " ") for x in can) if can else ""))
+
+    # Quick role switcher button & explanation
+    role_desc = {
+        "alice": "🛒 Buyer: Can run cases & draft POs (cannot self-approve).",
+        "bob": "✍️ Approver: Reviews & approves pending POs.",
+        "root": "⚙️ Admin: System settings & data reset.",
+    }
+    st.caption(role_desc.get(user_name, f"Role: {users.get(user_name, 'user')}"))
+
+    if user_name == "alice":
+        if st.button("Switch to Bob (Approver) ✍️", use_container_width=True):
+            st.session_state["acting_user"] = "bob"
+            st.rerun()
+    elif user_name == "bob":
+        if st.button("Switch to Alice (Buyer) 🛒", use_container_width=True):
+            st.session_state["acting_user"] = "alice"
+            st.rerun()
+
     st.markdown(f'<div class="pa-mode">Mode: {T.esc(svc.env.llm.mode)}<br>ERP day {svc.env.today} - '
                 f'{T.esc(svc.env.meta("profile"))}</div>', unsafe_allow_html=True)
     st.write("")
-    if st.button("Run demo scenario", use_container_width=True):
+    if st.button("▶ Run guided demo", type="primary", use_container_width=True):
         st.switch_page(P["demo"])
+
+    st.markdown("---")
+    st.markdown(
+        "<div style='font-size:0.78rem; color:#A2B7BA; line-height:1.4;'>"
+        "<b>3-Step Workflow:</b><br>"
+        "1️⃣ <b>Overview/Alerts</b>: Pick item<br>"
+        "2️⃣ <b>Agent run</b>: AI forecasts & drafts PO<br>"
+        "3️⃣ <b>Approvals</b>: Bob signs off"
+        "</div>",
+        unsafe_allow_html=True
+    )
 
 nav.run()
