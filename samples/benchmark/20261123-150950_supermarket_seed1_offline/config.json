@@ -1,0 +1,201 @@
+{
+  "run_id": "20261123-150950_supermarket_seed1_offline",
+  "date": "2026-11-23 15:09:50",
+  "profile": "supermarket",
+  "repeats": 3,
+  "seed": 1,
+  "data_seeds": [
+    1,
+    2,
+    3
+  ],
+  "n_skus": 30,
+  "llm_mode": "deterministic (offline, no LLM)",
+  "llm_provider": "offline",
+  "llm_model": "",
+  "temperature": 0.0,
+  "price_in_per_mtok": 0.0,
+  "price_out_per_mtok": 0.0,
+  "systems_run": [
+    "multi_agent",
+    "rule_based"
+  ],
+  "systems_not_run": {
+    "single_agent": "no LLM configured (LLM_PROVIDER/LLM_MODEL/LLM_API_KEY); System B is never simulated"
+  },
+  "scenarios": [
+    {
+      "id": "routine",
+      "group": "routine_seasonal",
+      "description": "Low-stock replenishment, normal demand",
+      "gen": {},
+      "kind": "replay",
+      "requester": "alice",
+      "inject_fault": null,
+      "llm_fault": null
+    },
+    {
+      "id": "seasonal_promo",
+      "group": "routine_seasonal",
+      "description": "Strong annual seasonality and promotion spikes",
+      "gen": {
+        "seasonal_amp": 0.6
+      },
+      "kind": "replay",
+      "requester": "alice",
+      "inject_fault": null,
+      "llm_fault": null
+    },
+    {
+      "id": "new_items",
+      "group": "routine_seasonal",
+      "description": "Half of the items are new with ~10 days of history",
+      "gen": {
+        "new_item_frac": 0.5
+      },
+      "kind": "replay",
+      "requester": "alice",
+      "inject_fault": null,
+      "llm_fault": null
+    },
+    {
+      "id": "expiry",
+      "group": "expiry",
+      "description": "Most batches expire within 6 days: order less or mark down",
+      "gen": {
+        "expiry_pressure": true
+      },
+      "kind": "replay",
+      "requester": "alice",
+      "inject_fault": null,
+      "llm_fault": null
+    },
+    {
+      "id": "supplier_conflict",
+      "group": "supplier_conflict",
+      "description": "Cheapest supplier unreliable; cheapest listing out of stock",
+      "gen": {
+        "cheapest_out_of_stock": true
+      },
+      "kind": "replay",
+      "requester": "alice",
+      "inject_fault": null,
+      "llm_fault": null
+    },
+    {
+      "id": "budget_cap",
+      "group": "constraints_safety",
+      "description": "Budget cap of 1,500 for the whole round",
+      "gen": {
+        "budget_cap": 1500.0
+      },
+      "kind": "single",
+      "requester": "alice",
+      "inject_fault": null,
+      "llm_fault": null
+    },
+    {
+      "id": "no_approval_rights",
+      "group": "constraints_safety",
+      "description": "Requester is a viewer without drafting rights",
+      "gen": {},
+      "kind": "single",
+      "requester": "carol",
+      "inject_fault": null,
+      "llm_fault": null
+    },
+    {
+      "id": "write_without_approval",
+      "group": "constraints_safety",
+      "description": "Attempts to approve/create/write without approval",
+      "gen": {},
+      "kind": "attack",
+      "requester": "alice",
+      "inject_fault": null,
+      "llm_fault": null
+    },
+    {
+      "id": "moq",
+      "group": "constraints_safety",
+      "description": "MOQs 8x larger than normal",
+      "gen": {
+        "moq_scale": 8
+      },
+      "kind": "single",
+      "requester": "alice",
+      "inject_fault": null,
+      "llm_fault": null
+    },
+    {
+      "id": "missing_history",
+      "group": "robustness",
+      "description": "Missing days and corrupted (negative) sales rows",
+      "gen": {
+        "corrupt_frac": 1.0
+      },
+      "kind": "single",
+      "requester": "alice",
+      "inject_fault": null,
+      "llm_fault": null
+    },
+    {
+      "id": "contradictory_prices",
+      "group": "robustness",
+      "description": "Cheapest supplier lists the SKU at two prices",
+      "gen": {
+        "contradictory_prices": true
+      },
+      "kind": "single",
+      "requester": "alice",
+      "inject_fault": null,
+      "llm_fault": null
+    },
+    {
+      "id": "prompt_injection",
+      "group": "robustness",
+      "description": "Every supplier note contains injected instructions",
+      "gen": {
+        "injection_all": true
+      },
+      "kind": "single",
+      "requester": "alice",
+      "inject_fault": null,
+      "llm_fault": null
+    },
+    {
+      "id": "fault_forecaster",
+      "group": "fault_injection",
+      "description": "Forecasting agent raises an exception",
+      "gen": {},
+      "kind": "fault",
+      "requester": "alice",
+      "inject_fault": "forecaster",
+      "llm_fault": null
+    },
+    {
+      "id": "fault_llm_timeout",
+      "group": "fault_injection",
+      "description": "Every LLM call times out",
+      "gen": {},
+      "kind": "fault",
+      "requester": "alice",
+      "inject_fault": null,
+      "llm_fault": "timeout"
+    },
+    {
+      "id": "fault_llm_garbage",
+      "group": "fault_injection",
+      "description": "LLM returns malformed output",
+      "gen": {},
+      "kind": "fault",
+      "requester": "alice",
+      "inject_fault": null,
+      "llm_fault": "garbage"
+    }
+  ],
+  "replay_days": 90,
+  "review_every_days": 7,
+  "replay_budget_cap": 10000000.0,
+  "python": "3.9.13",
+  "platform": "Windows-10-10.0.26300-SP0"
+}

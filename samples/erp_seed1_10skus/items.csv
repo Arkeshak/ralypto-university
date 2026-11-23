@@ -1,0 +1,11 @@
+sku,name,category,unit_cost,shelf_life_days,reorder_point
+SKU-0000,Produce item 0,Produce,23.41,7,273
+SKU-0001,Dairy item 1,Dairy,8.66,10,334
+SKU-0002,Produce item 2,Produce,17.07,7,127
+SKU-0003,Dairy item 3,Dairy,4.7,10,22
+SKU-0004,Dairy item 4,Dairy,16.7,10,201
+SKU-0005,Produce item 5,Produce,34.52,7,276
+SKU-0006,Beverages item 6,Beverages,4.45,120,192
+SKU-0007,Dairy item 7,Dairy,2.55,10,268
+SKU-0008,Dairy item 8,Dairy,29.57,10,24
+SKU-0009,Beverages item 9,Beverages,32.62,120,192
