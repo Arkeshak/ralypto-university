@@ -19,7 +19,7 @@ def _case_for(svc, po_id):
     return next((c for c in svc.cases.values() if c.po_id == po_id), None)
 
 
-def po_card(svc, po: dict, can_act: bool):
+def po_card(svc, po: dict, can_act: bool, prefix: str = "p"):
     case = _case_for(svc, po["po_id"])
     with st.container(border=True):
         top = st.columns([5, 2])
@@ -71,15 +71,16 @@ def po_card(svc, po: dict, can_act: bool):
         if po["status"] == "PENDING_APPROVAL":
             k = po["po_id"]
             b1, b2, b3, b4 = st.columns([1, 1, 2, 1])
-            reason = b3.text_input("Reason / note", key=f"reason{k}", placeholder="optional, saved in the audit log",
+            reason = b3.text_input("Reason / note", key=f"{prefix}_reason{k}", placeholder="optional, saved in audit log",
                                    label_visibility="collapsed")
-            if b1.button("Approve", key=f"ap{k}", type="primary", disabled=not can_act, use_container_width=True):
+            if b1.button("Approve", key=f"{prefix}_ap{k}", type="primary", disabled=not can_act,
+                         use_container_width=True):
                 _act(lambda: svc.approve(state.user(), k, reason), f"PO #{k} approved and created in the ERP.")
-            if b2.button("Reject", key=f"rj{k}", disabled=not can_act, use_container_width=True):
+            if b2.button("Reject", key=f"{prefix}_rj{k}", disabled=not can_act, use_container_width=True):
                 _act(lambda: svc.reject(state.user(), k, reason or "rejected by approver"), f"PO #{k} rejected.")
             with b4.popover("Edit qty", disabled=not can_act, use_container_width=True):
-                q = st.number_input("New quantity", min_value=1, value=int(po["qty"]), key=f"q{k}")
-                if st.button("Save edit (re-validated)", key=f"ed{k}"):
+                q = st.number_input("New quantity", min_value=1, value=int(po["qty"]), key=f"{prefix}_q{k}")
+                if st.button("Save edit (re-validated)", key=f"{prefix}_ed{k}"):
                     try:
                         v = svc.edit(state.user(), k, q, reason or "approver edit")
                         if v.passed:
@@ -92,14 +93,14 @@ def po_card(svc, po: dict, can_act: bool):
                         st.error(str(e))
         elif po["status"] == "CREATED":
             b1, _ = st.columns([1, 4])
-            if b1.button("Cancel (rollback)", key=f"cx{po['po_id']}", disabled=not can_act):
+            if b1.button("Cancel (rollback)", key=f"{prefix}_cx{po['po_id']}", disabled=not can_act):
                 _act(lambda: svc.cancel(state.user(), po["po_id"], "rollback from dashboard"),
                      f"PO #{po['po_id']} cancelled.")
         d1, d2, _ = st.columns([1, 1, 4])
         d1.download_button("PO as CSV", svc.po_csv(state.user(), po["po_id"]), f"PO_{po['po_id']}.csv", "text/csv",
-                           key=f"csv{po['po_id']}", use_container_width=True)
+                           key=f"{prefix}_csv{po['po_id']}", use_container_width=True)
         d2.download_button("PO as PDF", svc.po_pdf(state.user(), po["po_id"]), f"PO_{po['po_id']}.pdf",
-                           "application/pdf", key=f"pdf{po['po_id']}", use_container_width=True)
+                           "application/pdf", key=f"{prefix}_pdf{po['po_id']}", use_container_width=True)
 
 
 def _act(fn, ok_msg):
@@ -142,7 +143,7 @@ def approvals():
         if len(pend) > 15:
             st.caption(f"Showing 15 of {len(pend)} pending POs (newest first).")
         for po in page:
-            po_card(svc, po, can_act)
+            po_card(svc, po, can_act, prefix="pend")
     with tab2:
         allp = svc.purchase_orders(state.user())
         if not allp:
@@ -152,7 +153,7 @@ def approvals():
                                      "approved_by"]]
             st.dataframe(df, hide_index=True, use_container_width=True)
             pick = st.selectbox("Open PO", [p["po_id"] for p in allp])
-            po_card(svc, next(p for p in allp if p["po_id"] == pick), can_act)
+            po_card(svc, next(p for p in allp if p["po_id"] == pick), can_act, prefix="all")
 
 
 # ------------------------------------------------------------------ Ask the data
