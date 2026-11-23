@@ -1,6 +1,7 @@
 """Typed shared state ("case file") and structured agent messages."""
 from __future__ import annotations
 
+import time
 from typing import Any, Optional
 
 from pydantic import BaseModel, Field
@@ -14,6 +15,7 @@ class Alert(BaseModel):
     avg_daily: float
     expiring_qty: int = 0
     days_to_expiry: Optional[int] = None
+    severity: str = "medium"  # low | medium | high
     evidence: str = ""
 
 
@@ -31,6 +33,11 @@ class Forecast(BaseModel):
     def sigma(self, h: int) -> float:
         return self.sigma_daily * h ** 0.5
 
+    def interval(self, h: int, z: float = 1.645) -> tuple[float, float]:
+        """Approximate 90% interval for total demand over h days."""
+        m, s = self.mean(h), self.sigma(h)
+        return max(0.0, m - z * s), m + z * s
+
 
 class SupplierOption(BaseModel):
     supplier_id: int
@@ -46,7 +53,9 @@ class SupplierOption(BaseModel):
 class SupplierRanking(BaseModel):
     sku: str
     options: list[SupplierOption]
+    weights: dict[str, float] = Field(default_factory=dict)
     flagged_notes: list[str] = Field(default_factory=list)
+    excluded: list[str] = Field(default_factory=list)
 
 
 class DraftPO(BaseModel):
@@ -58,6 +67,8 @@ class DraftPO(BaseModel):
     rationale: str = ""
     revision: int = 0
     action: str = "order"       # order | markdown (do not reorder)
+    horizon_days: int = 0
+    discrepancies: list[str] = Field(default_factory=list)  # LLM text that disagreed with the maths
 
     @property
     def total(self) -> float:
@@ -82,6 +93,9 @@ class Message(BaseModel):
     output: dict[str, Any] = Field(default_factory=dict)
     confidence: Optional[float] = None
     evidence: list[str] = Field(default_factory=list)
+    ts: float = Field(default_factory=time.time)
+    latency_ms: Optional[float] = None
+    mode: str = ""              # "deterministic (offline, no LLM)" or "llm:<provider>/<model>"
 
 
 class CaseFile(BaseModel):
@@ -94,7 +108,11 @@ class CaseFile(BaseModel):
     ranking: Optional[SupplierRanking] = None
     draft: Optional[DraftPO] = None
     validation: Optional[Validation] = None
+    validations: list[Validation] = Field(default_factory=list)  # one per validator pass
     po_id: Optional[int] = None
     review_flag: bool = False
     used_fallback: bool = False
+    mode: str = ""
     notes: list[str] = Field(default_factory=list)
+    trace: list[Message] = Field(default_factory=list)
+    latency_s: float = 0.0
