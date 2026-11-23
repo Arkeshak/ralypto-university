@@ -1122,6 +1122,47 @@ def render_evaluation() -> None:
                 ]
                 st.dataframe(detail_rows, use_container_width=True, hide_index=True, height=400)
 
+        # ── Supplier Fairness & Recommendation Distribution ──
+        ma_dist = ma.get("supplier_distribution", {})
+        rb_dist = rb.get("supplier_distribution", {})
+        if ma_dist or rb_dist:
+            st.markdown("### ⚖️ Supplier Recommendation Distribution (Fairness & Bias)")
+            all_sids = sorted(set(map(int, list(ma_dist.keys()) + list(rb_dist.keys()))))
+            dist_rows = []
+            for sid in all_sids:
+                m_info = ma_dist.get(str(sid), ma_dist.get(sid, {}))
+                r_info = rb_dist.get(str(sid), rb_dist.get(sid, {}))
+                dist_rows.append({
+                    "Supplier ID": sid,
+                    "MA Orders Placed": m_info.get("count", 0),
+                    "MA Share": f"{m_info.get('pct', 0):.1%}",
+                    "Rule-Based Orders Placed": r_info.get("count", 0),
+                    "Rule-Based Share": f"{r_info.get('pct', 0):.1%}",
+                })
+            st.dataframe(dist_rows, use_container_width=True, hide_index=True)
+
+        # ── System C: Human Evaluation Study ──
+        human_files = list(RESULTS_DIR.glob("human_study_*.json"))
+        if human_files:
+            st.markdown("### 👤 System C: Human Purchaser Evaluation")
+            h_rows = []
+            for hf in human_files:
+                try:
+                    h_data = json.loads(hf.read_text(encoding="utf-8"))
+                    h_rows.append({
+                        "Volunteer": h_data.get("volunteer", hf.stem),
+                        "Scenarios": h_data.get("n_scenarios", 10),
+                        "Unmet-Demand Rate": _fmt_pct(h_data.get("unmet_rate", 0)),
+                        "Expiry Write-Off": _fmt_money(h_data.get("expiry_writeoff_value", 0)),
+                        "Overstock Value": _fmt_money(h_data.get("overstock_value", 0)),
+                        "PO Accuracy vs Oracle": _fmt_pct(h_data.get("po_accuracy", 0)),
+                        "Avg Time/Task": f"{h_data.get('mean_time_per_task_s', 0)}s",
+                    })
+                except Exception:
+                    pass
+            if h_rows:
+                st.dataframe(h_rows, use_container_width=True, hide_index=True)
+
     # ── limitations ──
     st.divider()
     with st.expander("⚠️ Limitations and threats to validity"):

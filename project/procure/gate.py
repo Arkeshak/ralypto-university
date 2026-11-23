@@ -27,6 +27,9 @@ class Gate:
         self.db = sqlite3.connect(db_path, check_same_thread=False)
         self.db.row_factory = sqlite3.Row
 
+    def close(self):
+        self.db.close()
+
     # -- helpers
     def role(self, user: str):
         r = self.db.execute("SELECT role FROM users WHERE name=?", (user,)).fetchone()

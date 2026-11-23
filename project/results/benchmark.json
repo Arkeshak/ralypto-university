@@ -13,7 +13,7 @@
     "llm_provider": "offline",
     "llm_model": "",
     "repeats": 1,
-    "date": "2026-11-21",
+    "date": "2026-11-23",
     "python": "3.10.11",
     "note": "single_agent skipped: no LLM configured"
   },
@@ -28,10 +28,17 @@
         "po_accuracy": 0.8235294117647058,
         "escalation_rate": 0.0,
         "fallback_rate": 0.0,
-        "latency_median_s": 0.005987650009046774,
-        "latency_p95_s": 0.006682599996565841,
+        "latency_median_s": 0.008522800000037023,
+        "latency_p95_s": 0.011321399999928872,
         "tokens": 0,
-        "cost_usd": 0.0
+        "cost_usd": 0.0,
+        "supplier_recommendations": {
+          "1": 15,
+          "5": 4,
+          "3": 5,
+          "2": 4,
+          "4": 5
+        }
       },
       {
         "seed": 2,
@@ -42,10 +49,16 @@
         "po_accuracy": 0.5333333333333333,
         "escalation_rate": 0.0,
         "fallback_rate": 0.0,
-        "latency_median_s": 0.006373249998432584,
-        "latency_p95_s": 0.007305500010261312,
+        "latency_median_s": 0.006628949999992528,
+        "latency_p95_s": 0.009138800000073388,
         "tokens": 0,
-        "cost_usd": 0.0
+        "cost_usd": 0.0,
+        "supplier_recommendations": {
+          "1": 15,
+          "2": 5,
+          "4": 7,
+          "5": 3
+        }
       },
       {
         "seed": 3,
@@ -56,10 +69,17 @@
         "po_accuracy": 0.6285714285714286,
         "escalation_rate": 0.0,
         "fallback_rate": 0.0,
-        "latency_median_s": 0.006211699990672059,
-        "latency_p95_s": 0.007000600002356805,
+        "latency_median_s": 0.006678200000010293,
+        "latency_p95_s": 0.00790719999997691,
         "tokens": 0,
-        "cost_usd": 0.0
+        "cost_usd": 0.0,
+        "supplier_recommendations": {
+          "5": 4,
+          "1": 16,
+          "4": 7,
+          "3": 6,
+          "2": 2
+        }
       },
       {
         "seed": 4,
@@ -70,10 +90,17 @@
         "po_accuracy": 0.8,
         "escalation_rate": 0.0,
         "fallback_rate": 0.0,
-        "latency_median_s": 0.00632604999555042,
-        "latency_p95_s": 0.007150399993406609,
+        "latency_median_s": 0.0062577000000487715,
+        "latency_p95_s": 0.007282300000042596,
         "tokens": 0,
-        "cost_usd": 0.0
+        "cost_usd": 0.0,
+        "supplier_recommendations": {
+          "1": 18,
+          "3": 4,
+          "4": 2,
+          "5": 3,
+          "2": 1
+        }
       },
       {
         "seed": 5,
@@ -84,10 +111,17 @@
         "po_accuracy": 0.65625,
         "escalation_rate": 0.0,
         "fallback_rate": 0.0,
-        "latency_median_s": 0.005877499999769498,
-        "latency_p95_s": 0.006723399987095036,
+        "latency_median_s": 0.007448150000016085,
+        "latency_p95_s": 0.008482599999979357,
         "tokens": 0,
-        "cost_usd": 0.0
+        "cost_usd": 0.0,
+        "supplier_recommendations": {
+          "3": 1,
+          "2": 9,
+          "1": 15,
+          "5": 5,
+          "4": 2
+        }
       }
     ],
     "rule_based": [
@@ -100,10 +134,17 @@
         "po_accuracy": 0.029411764705882353,
         "escalation_rate": 0.029411764705882353,
         "fallback_rate": 0.0,
-        "latency_median_s": 0.0036982000019634143,
-        "latency_p95_s": 0.004331400006776676,
+        "latency_median_s": 0.004816650000009304,
+        "latency_p95_s": 0.006692099999895618,
         "tokens": 0,
-        "cost_usd": 0.0
+        "cost_usd": 0.0,
+        "supplier_recommendations": {
+          "1": 15,
+          "5": 5,
+          "3": 4,
+          "2": 5,
+          "4": 4
+        }
       },
       {
         "seed": 2,
@@ -114,10 +155,16 @@
         "po_accuracy": 0.06666666666666667,
         "escalation_rate": 0.0,
         "fallback_rate": 0.0,
-        "latency_median_s": 0.0035678999993251637,
-        "latency_p95_s": 0.00443739999900572,
+        "latency_median_s": 0.004412900000033915,
+        "latency_p95_s": 0.005779200000006313,
         "tokens": 0,
-        "cost_usd": 0.0
+        "cost_usd": 0.0,
+        "supplier_recommendations": {
+          "1": 18,
+          "2": 3,
+          "4": 8,
+          "5": 1
+        }
       },
       {
         "seed": 3,
@@ -128,10 +175,17 @@
         "po_accuracy": 0.11428571428571428,
         "escalation_rate": 0.0,
         "fallback_rate": 0.0,
-        "latency_median_s": 0.0036777000059373677,
-        "latency_p95_s": 0.004179900002782233,
+        "latency_median_s": 0.0038072999999485546,
+        "latency_p95_s": 0.004531599999950231,
         "tokens": 0,
-        "cost_usd": 0.0
+        "cost_usd": 0.0,
+        "supplier_recommendations": {
+          "5": 4,
+          "1": 19,
+          "4": 5,
+          "3": 5,
+          "2": 2
+        }
       },
       {
         "seed": 4,
@@ -142,10 +196,17 @@
         "po_accuracy": 0.13333333333333333,
         "escalation_rate": 0.0,
         "fallback_rate": 0.0,
-        "latency_median_s": 0.0037725000001955777,
-        "latency_p95_s": 0.004276699997717515,
+        "latency_median_s": 0.0037366500000075575,
+        "latency_p95_s": 0.004648500000030253,
         "tokens": 0,
-        "cost_usd": 0.0
+        "cost_usd": 0.0,
+        "supplier_recommendations": {
+          "1": 21,
+          "3": 4,
+          "4": 1,
+          "5": 3,
+          "2": 1
+        }
       },
       {
         "seed": 5,
@@ -156,10 +217,16 @@
         "po_accuracy": 0.09375,
         "escalation_rate": 0.0,
         "fallback_rate": 0.0,
-        "latency_median_s": 0.003838649994577281,
-        "latency_p95_s": 0.004650500006391667,
+        "latency_median_s": 0.004508400000020174,
+        "latency_p95_s": 0.005544300000110525,
         "tokens": 0,
-        "cost_usd": 0.0
+        "cost_usd": 0.0,
+        "supplier_recommendations": {
+          "1": 19,
+          "2": 7,
+          "5": 5,
+          "4": 1
+        }
       }
     ]
   },
@@ -194,10 +261,10 @@
         ]
       },
       "latency_median_s": {
-        "mean": 0.006155229998694267,
+        "mean": 0.00710716000002094,
         "ci95": [
-          0.005976649999502115,
-          0.00631261999515118
+          0.006490300000018578,
+          0.00787801000002446
         ]
       },
       "tokens": {
@@ -213,6 +280,28 @@
           0.0,
           0.0
         ]
+      },
+      "supplier_distribution": {
+        "1": {
+          "count": 79,
+          "pct": 0.5
+        },
+        "2": {
+          "count": 21,
+          "pct": 0.133
+        },
+        "3": {
+          "count": 16,
+          "pct": 0.101
+        },
+        "4": {
+          "count": 23,
+          "pct": 0.146
+        },
+        "5": {
+          "count": 19,
+          "pct": 0.12
+        }
       }
     },
     "rule_based": {
@@ -245,10 +334,10 @@
         ]
       },
       "latency_median_s": {
-        "mean": 0.003710990000399761,
+        "mean": 0.004256380000003901,
         "ci95": [
-          0.0036307800008216875,
-          0.0037932299979729577
+          0.003900159999989228,
+          0.004612600000018574
         ]
       },
       "tokens": {
@@ -264,6 +353,28 @@
           0.0,
           0.0
         ]
+      },
+      "supplier_distribution": {
+        "1": {
+          "count": 92,
+          "pct": 0.575
+        },
+        "2": {
+          "count": 18,
+          "pct": 0.113
+        },
+        "3": {
+          "count": 13,
+          "pct": 0.081
+        },
+        "4": {
+          "count": 19,
+          "pct": 0.119
+        },
+        "5": {
+          "count": 18,
+          "pct": 0.113
+        }
       }
     }
   },

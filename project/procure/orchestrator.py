@@ -10,6 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 from . import agents as A
 from .gate import Gate, GateError
 from .models import CaseFile, Message
+from .registry import AgentRegistry, default_registry
 
 MAX_REVISIONS = 2
 _lock = threading.Lock()
@@ -42,7 +43,15 @@ def reorder_point_policy(env: A.Env, sku: str):
 
 
 def run_case(env: A.Env, gate: Gate, tracer: Tracer, sku: str, requester: str = "alice",
-             inject_fault: str | None = None) -> CaseFile:
+             inject_fault: str | None = None, registry: AgentRegistry | None = None) -> CaseFile:
+    reg = registry or default_registry
+    fn_monitor = reg.get("stock_monitor") or A.stock_monitor
+    fn_forecast = reg.get("forecaster") or A.forecaster
+    fn_supplier = reg.get("supplier_ranker") or A.supplier_ranker
+    fn_po = reg.get("po_drafter") or A.po_drafter
+    fn_reviser = reg.get("po_reviser") or A.po_reviser
+    fn_validator = reg.get("validator") or A.validator
+
     case = CaseFile(task_id=uuid.uuid4().hex[:8], sku=sku, requester=requester)
 
     def log(author, inputs, output, conf=None, evidence=()):
@@ -50,7 +59,7 @@ def run_case(env: A.Env, gate: Gate, tracer: Tracer, sku: str, requester: str = 
                             evidence=list(evidence)))
 
     # 1. Stock Monitor
-    case.alert = A.stock_monitor(env, sku)
+    case.alert = fn_monitor(env, sku)
     if not case.alert:
         case.status = "no_action"
         return case
@@ -60,10 +69,10 @@ def run_case(env: A.Env, gate: Gate, tracer: Tracer, sku: str, requester: str = 
     def do_forecast():
         if inject_fault == "forecaster":
             raise RuntimeError("injected forecaster failure")
-        return A.forecaster(env, sku)
+        return fn_forecast(env, sku)
 
     with ThreadPoolExecutor(2) as ex:
-        f_fc, f_sup = ex.submit(do_forecast), ex.submit(A.supplier_ranker, env, sku)
+        f_fc, f_sup = ex.submit(do_forecast), ex.submit(fn_supplier, env, sku)
         try:
             case.forecast = f_fc.result()
         except Exception as e:  # fallback: deterministic reorder-point policy
@@ -88,7 +97,7 @@ def run_case(env: A.Env, gate: Gate, tracer: Tracer, sku: str, requester: str = 
             case.review_flag = True
             case.notes.append("low forecast confidence: +25% safety buffer, flagged for review")
         mult = 1.25 if case.review_flag else 1.0
-        case.draft = A.po_drafter(env, case.alert, case.forecast, case.ranking, 0, mult)
+        case.draft = fn_po(env, case.alert, case.forecast, case.ranking, 0, mult)
     if case.draft is None:
         case.status = "escalated"
         case.notes.append("no available supplier")
@@ -101,14 +110,14 @@ def run_case(env: A.Env, gate: Gate, tracer: Tracer, sku: str, requester: str = 
 
     # 3. Validator loop with bounded revisions
     for rev in range(MAX_REVISIONS + 1):
-        case.validation = A.validator(env, case.draft, case.forecast, requester)
+        case.validation = fn_validator(env, case.draft, case.forecast, requester)
         log("validator", {"draft": case.draft.model_dump()}, case.validation.model_dump())
         if case.validation.passed:
             break
         if rev == MAX_REVISIONS:
             break
         remaining = env.budget_cap - env.committed_spend()
-        revised = A.po_reviser(env, case.draft, case.validation.failures, case.ranking, remaining, rev + 1)
+        revised = fn_reviser(env, case.draft, case.validation.failures, case.ranking, remaining, rev + 1)
         if revised is None:
             break
         case.draft = revised

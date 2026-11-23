@@ -166,8 +166,12 @@ def po_drafter(env: Env, alert: Alert, fc: Forecast, rank: SupplierRanking, opti
                        action="markdown",
                        rationale=f"Usable stock covers forecast demand over {h}d; mark down expiring units instead of reordering.")
     qty = max(o.moq, math.ceil(qty_needed))
+    trade_off = ""
+    if len(rank.options) > 1:
+        alt = rank.options[1]
+        trade_off = f" [Runner-up: {alt.name} at ${alt.unit_price:.2f}, lead {alt.lead_time}d, reliability {alt.reliability:.0%}]"
     rationale = (f"Order {qty} from {o.name}: forecast {fc.mean(h):.0f} over {h}d (confidence {fc.confidence}), "
-                 f"safety z={z}, usable stock {_usable_stock(env, alert.sku, fc.mean(7) / 7):.0f}, MOQ {o.moq}.")
+                 f"safety z={z}, usable stock {_usable_stock(env, alert.sku, fc.mean(7) / 7):.0f}, MOQ {o.moq}.{trade_off}")
     txt = env.llm.complete("Write a two-sentence purchase justification. Use only the numbers provided and always state the quantity.",
                            rationale)
     if txt and str(qty) in txt:
