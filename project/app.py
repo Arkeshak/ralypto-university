@@ -39,8 +39,18 @@ def demo():
         T.empty("No alerts in the current ERP. Regenerate the data in Settings (admin).")
         return
     target = next((a for a in al if a.kind in ("low_stock", "both")), al[0])
-    st.markdown(f"Selected alert: **{target.sku}** - severity {T.pill(target.severity)} - {target.kind} - "
-                f"{T.esc(target.evidence)}", unsafe_allow_html=True)
+    st.markdown(
+        f'<div class="pa-card">'
+        f'<div style="font-size:1.05rem; font-weight:700; margin-bottom:4px;">Target Item: <code>{target.sku}</code> '
+        f'{T.pill(target.severity)}</div>'
+        f'<div style="color:#64748B; font-size:0.88rem;">'
+        f'Condition: <b>{target.kind.replace("_", " ").title()}</b> • '
+        f'Stock on hand: <b>{int(target.on_hand)} units</b> • '
+        f'Reorder threshold: <b>{int(target.reorder_point)} units</b> • '
+        f'Daily sales: <b>{target.avg_daily:.1f} units/day</b>'
+        f'</div></div>',
+        unsafe_allow_html=True,
+    )
     if not st.button("Play the full case", type="primary"):
         st.caption("The button runs every step for real against the synthetic ERP; nothing is pre-recorded.")
         return
@@ -76,7 +86,7 @@ def demo():
                 T.callout(
                     "🛡️ <b>Security Gate Verified:</b> Buyer 'alice' attempted unauthorized self-approval and "
                     "was safely blocked by governance policy (only Approvers can authorize purchases).",
-                    kind="info"
+                    kind="info",
                 )
             st.write(f"Approver 'bob' reviews PO #{po_id}: {draft.qty} x {draft.supplier_name} = "
                      f"{T.money(draft.total)}")
@@ -109,13 +119,15 @@ P = {
     "demo": st.Page(demo, title="Live demo", icon=":material/play_circle:", url_path="demo"),
 }
 pages_ops.PAGES.update(P)
-nav = st.navigation({"Operate": [P["overview"], P["alerts"], P["agent_run"], P["approvals"]],
-                     "Data and governance": [P["ask"], P["audit"]],
-                     "Evaluate and configure": [P["benchmark"], P["settings"], P["demo"]]})
+nav = st.navigation({
+    "⭐ Start Here": [P["demo"], P["overview"]],
+    "📦 Purchasing Operations": [P["alerts"], P["agent_run"], P["approvals"]],
+    "🛡️ Governance & Intelligence": [P["ask"], P["audit"], P["benchmark"], P["settings"]],
+})
 
 with st.sidebar:
     st.markdown("### ProcureAgents")
-    st.caption("Team Ralypto - Innodata AI Catalyst '26")
+    st.caption("Team Ralypto • Innodata Catalyst '26")
     svc = state.svc()
     users = svc.users()
     names = list(users)
@@ -150,13 +162,14 @@ with st.sidebar:
 
     st.markdown("---")
     st.markdown(
-        "<div style='font-size:0.78rem; color:#A2B7BA; line-height:1.4;'>"
-        "<b>3-Step Workflow:</b><br>"
-        "1️⃣ <b>Overview/Alerts</b>: Pick item<br>"
-        "2️⃣ <b>Agent run</b>: AI forecasts & drafts PO<br>"
-        "3️⃣ <b>Approvals</b>: Bob signs off"
+        "<div style='font-size:0.78rem; color:#A2B7BA; line-height:1.45;'>"
+        "<b>ProcureAgents Flow:</b><br>"
+        "1️⃣ <b>Overview/Alerts</b>: Detect risk<br>"
+        "2️⃣ <b>Agent Run</b>: AI plans quantity & vendor<br>"
+        "3️⃣ <b>Approvals</b>: Human manager authorizes"
         "</div>",
-        unsafe_allow_html=True
+        unsafe_allow_html=True,
     )
+
 
 nav.run()

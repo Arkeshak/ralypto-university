@@ -51,16 +51,17 @@ def expiry_frame(svc, window: int = 30) -> pd.DataFrame:
 def overview():
     svc = state.svc()
     T.header("Operations", "Overview",
-             f"Live view of the synthetic ERP (profile {svc.env.meta('profile')}, day {svc.env.today}). "
-             "All figures are read through the agents' read-only connection.")
+             f"Live supply chain health for profile '{svc.env.meta('profile')}' (ERP Day {svc.env.today}). "
+             "All metrics are computed in real time from the inventory database.")
 
     T.flow_banner(
-        "How ProcureAgents Works",
-        "A multi-agent architecture that automates purchasing decisions while strictly maintaining safety and human authority.",
+        "Autonomous Procurement with Human Governance",
+        "ProcureAgents continuously detects inventory shortfalls, forecasts future demand with ML, selects the best supplier, "
+        "and prepares purchase orders for manager approval.",
         [
-            ("1", "Detect Risk", "Stock Monitor scans ERP inventory levels, reorder thresholds, and expiring batches."),
-            ("2", "AI Agents Decide", "Demand Forecaster (LightGBM) & Supplier Agent run in parallel to plan order & vendor."),
-            ("3", "Safe Approval", "Validator enforces budget caps; authorized approver (bob) signs off on the ERP PO.")
+            ("1", "Detect Shortfall", "Stock Monitor identifies items below reorder points or batches nearing expiry."),
+            ("2", "AI Agents Plan", "Demand Forecaster (LightGBM) & Supplier Agent run in parallel to plan order & vendor."),
+            ("3", "Human Approves", "Validator checks budget & policy rules; manager (Bob) authorizes purchase.")
         ]
     )
 
@@ -76,89 +77,127 @@ def overview():
     inv = inventory_frame(svc)
     exp = expiry_frame(svc, 14)
     open_pos = svc.purchase_orders(state.user(), "PENDING_APPROVAL")
-    c = st.columns(5)
+
+    c = st.columns(4)
     with c[0]:
-        T.kpi("Items low on stock", int(inv["below_reorder"].sum()), f"of {len(inv)} SKUs at or below reorder point",
+        T.kpi("Items Below Reorder", int(inv["below_reorder"].sum()),
+              f"{int(inv['below_reorder'].sum())} of {len(inv)} items need restocking",
               "warn" if inv["below_reorder"].any() else "good")
     with c[1]:
-        T.kpi("Expiring batches", len(exp), "within 14 days", "warn" if len(exp) else "good")
-    with c[2]:
-        T.kpi("Open POs", len(open_pos), "awaiting approval", "primary")
-    with c[3]:
-        T.kpi("Stockout risk", int(inv["stockout_risk"].sum()), "SKUs with cover shorter than the fastest lead time",
+        T.kpi("Immediate Stockout Risk", int(inv["stockout_risk"].sum()),
+              "Stock cover is less than vendor lead time",
               "bad" if inv["stockout_risk"].any() else "good")
-    with c[4]:
-        T.kpi("Expiry value at risk", T.money(float(exp["value"].sum()) if len(exp) else 0.0), "at cost, next 14 days",
+    with c[2]:
+        T.kpi("Expiring Stock (14d)", T.money(float(exp["value"].sum()) if len(exp) else 0.0),
+              f"{len(exp)} batches at risk of write-off",
               "bad" if len(exp) else "good")
+    with c[3]:
+        T.kpi("POs Awaiting Approval", len(open_pos),
+              "Orders drafted by AI waiting for human sign-off",
+              "primary" if len(open_pos) else "good")
+
     st.write("")
-    left, right = st.columns([3, 2])
-    with left:
-        st.markdown("**Stock vs reorder level** (items at or near the reorder point)")
+
+    # Urgent Restock Items
+    urgent = inv[inv["stockout_risk"] | inv["below_reorder"]].copy()
+    if not urgent.empty:
+        st.markdown("### ⚡ Priority Items Needing Restock")
+        st.caption("These products are running dangerously low. Click 'Order with AI' to automatically plan replenishment.")
+        urg_show = urgent.sort_values("cover_days").head(4)
+        for _, row in urg_show.iterrows():
+            with st.container(border=True):
+                uc1, uc2, uc3, uc4 = st.columns([3, 2, 2, 2])
+                with uc1:
+                    st.markdown(f"**{row['name']}** (`{row['sku']}`)")
+                    st.caption(f"Category: {row['category']} • Cost: ${row['unit_cost']:.2f}")
+                with uc2:
+                    st.metric("Stock on Hand", f"{int(row['on_hand'])} units", f"Reorder at {int(row['reorder_point'])}")
+                with uc3:
+                    st.metric("Supply Remaining", f"{row['cover_days']:.1f} days", f"Lead time: {int(row['min_lead_days'])}d",
+                              delta_color="inverse")
+                with uc4:
+                    st.write("")
+                    if st.button("🚀 Order with AI", key=f"ov_run_{row['sku']}", type="primary", use_container_width=True):
+                        st.session_state["run_request"] = {"sku": row["sku"], "fault": None}
+                        st.switch_page(PAGES["agent_run"])
+
+    st.markdown("---")
+    st.markdown("### 📈 Visual Inventory Diagnostics")
+    tab_stock, tab_exp = st.tabs(["📊 Stock vs. Reorder Buffers", "📅 30-Day Expiry Schedule"])
+    with tab_stock:
         show = inv.assign(ratio=inv["on_hand"] / inv["reorder_point"].clip(lower=1)).sort_values("ratio").head(20)
         if show.empty:
             T.empty("No items.")
         else:
             base = alt.Chart(show).encode(y=alt.Y("sku:N", sort=list(show["sku"]), title=None))
-            bars = base.mark_bar(color=T.PRIMARY, size=12).encode(
-                x=alt.X("on_hand:Q", title="units"),
+            bars = base.mark_bar(color=T.PRIMARY, size=14).encode(
+                x=alt.X("on_hand:Q", title="Units on hand"),
                 color=alt.condition("datum.below_reorder", alt.value(T.AMBER), alt.value(T.PRIMARY)),
                 tooltip=["sku", "name", "on_hand", "reorder_point", "cover_days"])
-            ticks = base.mark_tick(color=T.RED, thickness=2, size=16).encode(x="reorder_point:Q")
-            st.altair_chart((bars + ticks).properties(height=420), use_container_width=True)
-            st.caption("Bars: on hand (amber = at or below reorder point). Red tick: reorder point.")
-    with right:
-        st.markdown("**Expiry timeline** (value expiring per day, next 30 days)")
+            ticks = base.mark_tick(color=T.RED, thickness=3, size=18).encode(x="reorder_point:Q")
+            st.altair_chart((bars + ticks).properties(height=380), use_container_width=True)
+            st.caption("Amber bar = stock is below reorder threshold. Red tick = minimum reorder point.")
+    with tab_exp:
         ex30 = expiry_frame(svc, 30)
         if ex30.empty:
             T.empty("No batches expire in the next 30 days.")
         else:
             agg = ex30.groupby("days_to_expiry", as_index=False).agg(value=("value", "sum"), batches=("sku", "count"))
             ch = alt.Chart(agg).mark_bar(color=T.AMBER).encode(
-                x=alt.X("days_to_expiry:O", title="days to expiry"), y=alt.Y("value:Q", title="value at cost"),
+                x=alt.X("days_to_expiry:O", title="Days to expiry"),
+                y=alt.Y("value:Q", title="Value at cost ($)"),
                 color=alt.condition(alt.datum.days_to_expiry <= 7, alt.value(T.RED), alt.value(T.AMBER)),
                 tooltip=["days_to_expiry", "value", "batches"])
-            st.altair_chart(ch.properties(height=420), use_container_width=True)
-            st.caption("Red: expires within 7 days.")
+            st.altair_chart(ch.properties(height=380), use_container_width=True)
+            st.caption("Red bars expire within 7 days. Mark down or discount soon to prevent write-off loss.")
 
 
 # ------------------------------------------------------------------ Alerts and cases
 def alerts():
     svc = state.svc()
-    T.header("Stock Monitor", "Alerts and cases",
-             "Alerts raised by the Stock Monitor agent from stock, reorder points and expiry dates. "
-             "Select one and run the agent team on it.")
-    T.callout(
-        "💡 <b>How to test this page:</b> Select any alert below (e.g. <code>low_stock</code>), "
-        "then choose it in the dropdown and click <b>'Run agents'</b> to see AI agents plan demand & draft a PO.",
-        kind="info"
-    )
+    T.header("Stock Monitor", "Alerts and Cases",
+             "Inventory alerts raised automatically by the Stock Monitor agent based on real-time stock levels, "
+             "reorder thresholds, and batch expiry dates.")
+
     al = svc.alerts(state.user())
     if not al:
-        T.empty("No alerts: every item is above its reorder point and nothing expires within 14 days.")
+        T.empty("✅ All healthy! Every item is above its reorder threshold and no batches expire within 14 days.")
         return
-    f1, f2 = st.columns([1, 3])
-    sev = f1.multiselect("Severity", ["high", "medium", "low"], default=["high", "medium", "low"])
-    kinds = f2.multiselect("Type", ["low_stock", "expiry", "both"], default=["low_stock", "expiry", "both"])
+
+    f1, f2 = st.columns([1, 2])
+    sev = f1.multiselect("Priority Filter", ["high", "medium", "low"], default=["high", "medium", "low"])
+    kinds = f2.multiselect("Condition Filter", ["low_stock", "expiry", "both"], default=["low_stock", "expiry", "both"])
     al = [a for a in al if a.severity in sev and a.kind in kinds]
-    df = pd.DataFrame([{"SKU": a.sku, "Severity": a.severity, "Type": a.kind, "On hand": a.on_hand,
-                        "Reorder point": a.reorder_point, "Avg daily (28d)": a.avg_daily,
-                        "Expiring qty": a.expiring_qty, "Days to expiry": a.days_to_expiry, "Evidence": a.evidence}
-                       for a in al])
-    st.dataframe(df, use_container_width=True, hide_index=True, height=360)
-    st.markdown("**Run the agents on an alert**")
-    c1, c2, c3 = st.columns([2, 2, 1])
-    sku = c1.selectbox("Alert", [a.sku for a in al], format_func=lambda s: next(
-        f"{a.sku} - {a.severity} - {a.kind}" for a in al if a.sku == s))
-    fault = c2.selectbox("Fault injection (for testing)", ["none", "forecaster"],
-                         help="'forecaster' makes the Forecasting agent fail so the deterministic fallback runs.")
-    can = svc.can(state.user(), "run_case")
-    c3.write("")
-    if c3.button("Run agents", type="primary", disabled=not can, use_container_width=True):
-        st.session_state["run_request"] = {"sku": sku, "fault": None if fault == "none" else fault}
-        st.switch_page(PAGES["agent_run"])
-    if not can:
-        st.info(f"Your role ({state.role()}) can view alerts but cannot start a purchasing case. "
-                "Switch to a buyer, approver or admin in the sidebar.")
+
+    clean_rows = []
+    for a in al:
+        supply = a.on_hand / max(0.1, a.avg_daily)
+        clean_rows.append({
+            "SKU": a.sku,
+            "Priority": "🔴 High" if a.severity == "high" else ("🟡 Medium" if a.severity == "medium" else "⚪ Low"),
+            "Issue": "Low Stock" if a.kind == "low_stock" else ("Expiring Soon" if a.kind == "expiry" else "Stock & Expiry"),
+            "On Hand": f"{int(a.on_hand)} units",
+            "Reorder Point": f"{int(a.reorder_point)} units",
+            "Daily Sales": f"{a.avg_daily:.1f} / day",
+            "Stock Cover": f"{supply:.1f} days",
+        })
+    st.dataframe(pd.DataFrame(clean_rows), use_container_width=True, hide_index=True, height=280)
+
+    st.write("")
+    with st.container(border=True):
+        st.markdown("#### 🤖 Launch Multi-Agent Workflow for an Alert")
+        st.caption("Select an item below. Demand Forecaster and Supplier Agent will run in parallel to plan replenishment.")
+        c1, c2 = st.columns([3, 1])
+        sku = c1.selectbox("Choose item alert to run", [a.sku for a in al], format_func=lambda s: next(
+            f"{a.sku} ({a.kind.replace('_', ' ').title()}) - Stock: {int(a.on_hand)} | Reorder Point: {int(a.reorder_point)}"
+            for a in al if a.sku == s))
+        can = svc.can(state.user(), "run_case")
+        c2.write("")
+        if c2.button("Run Agents 🚀", type="primary", disabled=not can, use_container_width=True):
+            st.session_state["run_request"] = {"sku": sku, "fault": None}
+            st.switch_page(PAGES["agent_run"])
+        if not can:
+            st.caption("🔒 *Note: Only buyers, approvers, or admins can run purchasing cases.*")
 
 
 # ------------------------------------------------------------------ Agent run view

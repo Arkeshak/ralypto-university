@@ -5,91 +5,372 @@ import html
 
 import streamlit as st
 
-PRIMARY = "#0F5C63"
-PRIMARY_DARK = "#0A4247"
-PRIMARY_SOFT = "#E3EFF0"
-BG = "#F5F8F9"
+PRIMARY = "#0F766E"
+PRIMARY_DARK = "#0F172A"
+PRIMARY_SOFT = "#F0FDFA"
+BG = "#F8FAFC"
 SURFACE = "#FFFFFF"
-BORDER = "#DCE5E7"
-TEXT = "#1E2B2E"
-MUTED = "#5F7276"
-AMBER = "#E8A33D"
-RED = "#B5483F"
-GREEN = "#3C8D5A"
-GREY = "#7A8B8F"
+BORDER = "#E2E8F0"
+TEXT = "#0F172A"
+MUTED = "#64748B"
+AMBER = "#D97706"
+RED = "#DC2626"
+GREEN = "#16A34A"
+GREY = "#94A3B8"
 
-TONES = {"primary": (PRIMARY, PRIMARY_SOFT), "warn": (AMBER, "#FBF1E0"), "bad": (RED, "#F6E4E2"),
-         "good": (GREEN, "#E3F1E8"), "muted": (GREY, "#EEF2F3")}
+TONES = {
+    "primary": (PRIMARY, PRIMARY_SOFT),
+    "warn": (AMBER, "#FFFBEB"),
+    "bad": (RED, "#FEF2F2"),
+    "good": (GREEN, "#F0FDF4"),
+    "muted": (GREY, "#F1F5F9"),
+}
 
-STATUS_TONE = {"DRAFT": "muted", "VALIDATED": "primary", "PENDING_APPROVAL": "warn", "APPROVED": "good",
-               "CREATED": "good", "RECEIVED": "good", "REJECTED": "bad", "CANCELLED": "bad",
-               "pending_approval": "warn", "created": "good", "escalated": "bad", "rejected": "bad",
-               "no_action": "muted", "failed": "bad", "high": "bad", "medium": "warn", "low": "muted"}
+STATUS_TONE = {
+    "DRAFT": "muted",
+    "VALIDATED": "primary",
+    "PENDING_APPROVAL": "warn",
+    "APPROVED": "good",
+    "CREATED": "good",
+    "RECEIVED": "good",
+    "REJECTED": "bad",
+    "CANCELLED": "bad",
+    "pending_approval": "warn",
+    "created": "good",
+    "escalated": "bad",
+    "rejected": "bad",
+    "no_action": "muted",
+    "failed": "bad",
+    "high": "bad",
+    "medium": "warn",
+    "low": "muted",
+}
 
 CSS = f"""
 <style>
-:root {{ --primary:{PRIMARY}; --bg:{BG}; --border:{BORDER}; --text:{TEXT}; --muted:{MUTED}; }}
-html, body, [class*="css"] {{ font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif; }}
-.stApp {{ background:{BG}; color:{TEXT}; }}
-section[data-testid="stSidebar"] {{ background:{PRIMARY_DARK}; }}
-section[data-testid="stSidebar"] * {{ color:#E6F0F1 !important; }}
-section[data-testid="stSidebar"] [data-baseweb="select"] * {{ color:{TEXT} !important; }}
-section[data-testid="stSidebar"] .stButton button {{ background:{PRIMARY}; border:1px solid #2A7A81; color:#fff !important; }}
-section[data-testid="stSidebar"] .stButton button:hover {{ background:#13707A; border-color:#5FA7AD; }}
-section[data-testid="stSidebar"] a[data-testid="stSidebarNavLink"] {{ border-radius:6px; }}
-section[data-testid="stSidebar"] a[data-testid="stSidebarNavLink"][aria-current="page"] {{ background:#13707A; }}
-.block-container {{ padding-top:1.6rem; padding-bottom:3rem; max-width:1400px; }}
-h1, h2, h3 {{ color:{TEXT}; letter-spacing:-0.01em; }}
-.pa-eyebrow {{ text-transform:uppercase; font-size:.72rem; letter-spacing:.09em; color:{PRIMARY}; font-weight:700; }}
-.pa-title {{ font-size:1.7rem; font-weight:700; margin:.1rem 0 .2rem 0; color:{TEXT}; }}
-.pa-sub {{ color:{MUTED}; font-size:.93rem; margin-bottom:1.1rem; max-width:70rem; }}
-.pa-card {{ background:{SURFACE}; border:1px solid {BORDER}; border-radius:10px; padding:16px 18px; margin-bottom:12px; }}
-.pa-banner {{ background:linear-gradient(135deg, #F0F7F7 0%, #FFFFFF 100%); border:1px solid #C8DFE1;
-              border-radius:12px; padding:20px 24px; margin-bottom:20px; box-shadow:0 2px 6px rgba(15,92,99,0.04); }}
-.pa-banner h3 {{ margin:0 0 6px 0; color:{PRIMARY_DARK}; font-size:1.25rem; font-weight:700; }}
-.pa-banner p {{ margin:0 0 14px 0; color:{MUTED}; font-size:0.92rem; line-height:1.5; }}
-.pa-flow-steps {{ display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:12px; margin-top:14px; }}
-.pa-flow-step {{ background:#FFFFFF; border:1px solid {BORDER}; border-radius:8px; padding:12px 14px;
-                 box-shadow:0 1px 3px rgba(0,0,0,0.03); }}
-.pa-flow-step .num {{ display:inline-block; width:22px; height:22px; line-height:22px; text-align:center;
-                      background:{PRIMARY}; color:#fff; border-radius:50%; font-size:0.75rem; font-weight:700;
-                      margin-right:6px; }}
-.pa-flow-step .title {{ font-weight:700; font-size:0.88rem; color:{TEXT}; }}
-.pa-flow-step .desc {{ font-size:0.79rem; color:{MUTED}; margin-top:4px; line-height:1.4; }}
-.pa-callout {{ background:#EBF4F5; border-left:4px solid {PRIMARY}; border-radius:0 8px 8px 0; padding:12px 16px;
-               margin:12px 0; font-size:0.88rem; color:{TEXT}; }}
-.pa-callout.tip {{ background:#FFF9E6; border-left-color:{AMBER}; }}
-.pa-callout.success {{ background:#EAF5ED; border-left-color:{GREEN}; }}
-.pa-kpi {{ background:{SURFACE}; border:1px solid {BORDER}; border-radius:10px; padding:14px 16px; height:100%;
-          border-top:3px solid var(--tone); box-shadow:0 2px 4px rgba(0,0,0,0.02); }}
-.pa-kpi .l {{ color:{MUTED}; font-size:.78rem; font-weight:600; text-transform:uppercase; letter-spacing:.05em; }}
-.pa-kpi .v {{ font-size:1.65rem; font-weight:700; color:{TEXT}; margin-top:4px; }}
-.pa-kpi .s {{ color:{MUTED}; font-size:.8rem; margin-top:2px; }}
-.pa-pill {{ display:inline-block; padding:2px 9px; border-radius:999px; font-size:.74rem; font-weight:600;
-           color:var(--fg); background:var(--bgc); border:1px solid var(--fg); white-space:nowrap; }}
-.pa-mode {{ font-size:.75rem; padding:6px 10px; border-radius:6px; background:#0B4D53; border:1px solid #2A7A81; }}
-.pa-step {{ display:flex; gap:12px; padding:10px 0; border-bottom:1px solid {BORDER}; }}
-.pa-step:last-child {{ border-bottom:none; }}
-.pa-dot {{ width:12px; height:12px; border-radius:50%; margin-top:5px; flex:0 0 12px; background:var(--tone); }}
-.pa-step .a {{ font-weight:700; color:{TEXT}; }}
-.pa-step .m {{ color:{MUTED}; font-size:.8rem; }}
-.pa-stepper {{ display:flex; gap:0; margin:6px 0 4px 0; flex-wrap:wrap; }}
-.pa-stepper div {{ flex:1; min-width:110px; text-align:center; font-size:.72rem; font-weight:600; padding:7px 4px;
-                   border:1px solid {BORDER}; background:{SURFACE}; color:{MUTED}; }}
-.pa-stepper div.done {{ background:{PRIMARY_SOFT}; color:{PRIMARY}; border-color:#B7D3D6; }}
-.pa-stepper div.now {{ background:{PRIMARY}; color:#fff; border-color:{PRIMARY}; }}
-.pa-stepper div.bad {{ background:#F6E4E2; color:{RED}; border-color:{RED}; }}
-.pa-empty {{ text-align:center; padding:34px; color:{MUTED}; background:{SURFACE}; border:1px dashed {BORDER};
-            border-radius:10px; }}
-.pa-blocked {{ border-left:4px solid {RED}; background:#F6E4E2; padding:10px 14px; border-radius:6px; color:{RED};
-              font-weight:600; }}
-.pa-kv {{ display:grid; grid-template-columns: 150px 1fr; gap:4px 12px; font-size:.9rem; }}
-.pa-kv .k {{ color:{MUTED}; }}
-div[data-testid="stMetric"] {{ background:{SURFACE}; border:1px solid {BORDER}; border-radius:10px; padding:10px 14px; }}
-.stTabs [data-baseweb="tab-list"] {{ gap:4px; }}
-.stTabs [data-baseweb="tab"] {{ background:{SURFACE}; border:1px solid {BORDER}; border-radius:6px 6px 0 0; }}
+:root {{
+  --primary: {PRIMARY};
+  --bg: {BG};
+  --border: {BORDER};
+  --text: {TEXT};
+  --muted: {MUTED};
+}}
+html, body, [class*="css"] {{
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: {TEXT};
+}}
+.stApp {{
+  background: {BG};
+  color: {TEXT};
+}}
+section[data-testid="stSidebar"] {{
+  background: {PRIMARY_DARK};
+  border-right: 1px solid #1E293B;
+}}
+section[data-testid="stSidebar"] * {{
+  color: #F8FAFC !important;
+}}
+section[data-testid="stSidebar"] [data-baseweb="select"] * {{
+  color: {TEXT} !important;
+}}
+section[data-testid="stSidebar"] .stButton button {{
+  background: {PRIMARY};
+  border: 1px solid #14B8A6;
+  color: #FFFFFF !important;
+  font-weight: 600;
+  border-radius: 8px;
+}}
+section[data-testid="stSidebar"] .stButton button:hover {{
+  background: #0D9488;
+  border-color: #2DD4BF;
+}}
+section[data-testid="stSidebar"] a[data-testid="stSidebarNavLink"] {{
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-bottom: 2px;
+}}
+section[data-testid="stSidebar"] a[data-testid="stSidebarNavLink"][aria-current="page"] {{
+  background: #1E293B;
+  border-left: 3px solid #14B8A6;
+}}
+.block-container {{
+  padding-top: 1.8rem;
+  padding-bottom: 3.5rem;
+  max-width: 1360px;
+}}
+h1, h2, h3, h4 {{
+  color: {TEXT};
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}}
+.pa-eyebrow {{
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  color: {PRIMARY};
+  font-weight: 700;
+}}
+.pa-title {{
+  font-size: 1.85rem;
+  font-weight: 800;
+  margin: 0.1rem 0 0.25rem 0;
+  color: {TEXT};
+}}
+.pa-sub {{
+  color: {MUTED};
+  font-size: 0.95rem;
+  margin-bottom: 1.3rem;
+  max-width: 72rem;
+  line-height: 1.5;
+}}
+.pa-card {{
+  background: {SURFACE};
+  border: 1px solid {BORDER};
+  border-radius: 12px;
+  padding: 18px 20px;
+  margin-bottom: 14px;
+  box-shadow: 0 1px 3px 0 rgba(0,0,0,0.04);
+}}
+.pa-banner {{
+  background: linear-gradient(135deg, #F0FDFA 0%, #FFFFFF 100%);
+  border: 1px solid #CCFBF1;
+  border-radius: 14px;
+  padding: 22px 26px;
+  margin-bottom: 22px;
+  box-shadow: 0 4px 6px -1px rgba(15,118,110,0.06);
+}}
+.pa-banner h3 {{
+  margin: 0 0 6px 0;
+  color: #115E59;
+  font-size: 1.3rem;
+  font-weight: 800;
+}}
+.pa-banner p {{
+  margin: 0 0 14px 0;
+  color: {MUTED};
+  font-size: 0.93rem;
+  line-height: 1.5;
+}}
+.pa-flow-steps {{
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}}
+.pa-flow-step {{
+  background: #FFFFFF;
+  border: 1px solid #CCFBF1;
+  border-radius: 10px;
+  padding: 14px 16px;
+  box-shadow: 0 1px 2px 0 rgba(0,0,0,0.03);
+}}
+.pa-flow-step .num {{
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  line-height: 24px;
+  text-align: center;
+  background: {PRIMARY};
+  color: #FFFFFF;
+  border-radius: 50%;
+  font-size: 0.78rem;
+  font-weight: 700;
+  margin-right: 8px;
+}}
+.pa-flow-step .title {{
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: {TEXT};
+}}
+.pa-flow-step .desc {{
+  font-size: 0.82rem;
+  color: {MUTED};
+  margin-top: 6px;
+  line-height: 1.45;
+}}
+.pa-callout {{
+  background: #F0FDFA;
+  border-left: 4px solid {PRIMARY};
+  border-radius: 0 10px 10px 0;
+  padding: 14px 18px;
+  margin: 14px 0;
+  font-size: 0.9rem;
+  color: {TEXT};
+  line-height: 1.5;
+}}
+.pa-callout.tip {{
+  background: #FFFBEB;
+  border-left-color: {AMBER};
+}}
+.pa-callout.success {{
+  background: #F0FDF4;
+  border-left-color: {GREEN};
+}}
+.pa-kpi {{
+  background: {SURFACE};
+  border: 1px solid {BORDER};
+  border-radius: 12px;
+  padding: 16px 18px;
+  height: 100%;
+  border-top: 4px solid var(--tone);
+  box-shadow: 0 1px 3px 0 rgba(0,0,0,0.03);
+}}
+.pa-kpi .l {{
+  color: {MUTED};
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}}
+.pa-kpi .v {{
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: {TEXT};
+  margin-top: 4px;
+}}
+.pa-kpi .s {{
+  color: {MUTED};
+  font-size: 0.82rem;
+  margin-top: 4px;
+  line-height: 1.35;
+}}
+.pa-pill {{
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--fg);
+  background: var(--bgc);
+  border: 1px solid var(--fg);
+  white-space: nowrap;
+}}
+.pa-mode {{
+  font-size: 0.78rem;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #1E293B;
+  border: 1px solid #334155;
+  color: #94A3B8;
+  line-height: 1.4;
+}}
+.pa-step {{
+  display: flex;
+  gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid {BORDER};
+}}
+.pa-step:last-child {{
+  border-bottom: none;
+}}
+.pa-dot {{
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-top: 5px;
+  flex: 0 0 12px;
+  background: var(--tone);
+}}
+.pa-step .a {{
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: {TEXT};
+}}
+.pa-step .m {{
+  color: {MUTED};
+  font-size: 0.8rem;
+  margin-top: 2px;
+}}
+.pa-stepper {{
+  display: flex;
+  gap: 0;
+  margin: 10px 0 8px 0;
+  flex-wrap: wrap;
+}}
+.pa-stepper div {{
+  flex: 1;
+  min-width: 110px;
+  text-align: center;
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 8px 6px;
+  border: 1px solid {BORDER};
+  background: {SURFACE};
+  color: {MUTED};
+}}
+.pa-stepper div:first-child {{
+  border-radius: 8px 0 0 8px;
+}}
+.pa-stepper div:last-child {{
+  border-radius: 0 8px 8px 0;
+}}
+.pa-stepper div.done {{
+  background: #CCFBF1;
+  color: #0F766E;
+  border-color: #99F6E4;
+}}
+.pa-stepper div.now {{
+  background: {PRIMARY};
+  color: #FFFFFF;
+  border-color: {PRIMARY};
+}}
+.pa-stepper div.bad {{
+  background: #FEE2E2;
+  color: {RED};
+  border-color: {RED};
+}}
+.pa-empty {{
+  text-align: center;
+  padding: 38px 24px;
+  color: {MUTED};
+  background: {SURFACE};
+  border: 1px dashed {BORDER};
+  border-radius: 12px;
+  font-size: 0.92rem;
+}}
+.pa-blocked {{
+  border-left: 4px solid {RED};
+  background: #FEF2F2;
+  padding: 12px 16px;
+  border-radius: 8px;
+  color: {RED};
+  font-weight: 600;
+}}
+.pa-kv {{
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 6px 14px;
+  font-size: 0.9rem;
+}}
+.pa-kv .k {{
+  color: {MUTED};
+  font-weight: 500;
+}}
+div[data-testid="stMetric"] {{
+  background: {SURFACE};
+  border: 1px solid {BORDER};
+  border-radius: 12px;
+  padding: 14px 18px;
+  box-shadow: 0 1px 3px 0 rgba(0,0,0,0.02);
+}}
+.stTabs [data-baseweb="tab-list"] {{
+  gap: 8px;
+  border-bottom: 2px solid {BORDER};
+}}
+.stTabs [data-baseweb="tab"] {{
+  background: transparent;
+  border-radius: 8px 8px 0 0;
+  padding: 8px 16px;
+  font-weight: 600;
+  color: {MUTED};
+}}
+.stTabs [aria-selected="true"] {{
+  color: {PRIMARY} !important;
+  border-bottom: 3px solid {PRIMARY} !important;
+}}
 </style>
 """
+
 
 
 def inject():
