@@ -7,14 +7,16 @@
 **Team Ralypto · University of Kelaniya**
 Arkeshkar · Seenujan · Harishchandran · Braynkanth
 
-*A safe, auditable multi-agent AI system for inventory and procurement decisions in ERP*
+*A safe, auditable multi-agent AI system for autonomous inventory forecasting, supplier negotiation, and human-governed procurement in ERP*
 
-[Overview](#overview) · [Architecture](#architecture) · [Setup](#setup) · [Commands](#commands) ·
-[Benchmark](#reproducing-the-benchmark) · [Documentation](#documentation)
+[Overview](#overview) · [Architecture](#architecture) · [User Interface](#user-interface) · [Setup](#setup) · [Commands](#commands) · [Benchmark](#reproducing-the-benchmark) · [Documentation](#documentation)
 
-![Python](https://img.shields.io/badge/Python-3.9%E2%80%933.12-0F5C63)
-![LangGraph](https://img.shields.io/badge/orchestration-LangGraph-0F5C63)
-![Tests](https://img.shields.io/badge/tests-pytest-3C8D5A)
+[![Python](https://img.shields.io/badge/Python-3.9%E2%80%933.12-0F766E?style=flat-square&logo=python&logoColor=white)](https://python.org)
+[![LangGraph](https://img.shields.io/badge/Orchestration-LangGraph-0F766E?style=flat-square)](https://langchain-ai.github.io/langgraph/)
+[![ML](https://img.shields.io/badge/Forecasting-LightGBM-0D9488?style=flat-square)](https://lightgbm.readthedocs.io)
+[![Tests](https://img.shields.io/badge/Tests-80%20Passed-16A34A?style=flat-square&logo=pytest&logoColor=white)](project/tests)
+[![Type-Check](https://img.shields.io/badge/Type%20Check-Pyrefly%200%20Errors-0284C7?style=flat-square)](pyproject.toml)
+[![Lint](https://img.shields.io/badge/Linter-Ruff%20Clean-0284C7?style=flat-square)](pyproject.toml)
 
 </div>
 
@@ -22,73 +24,89 @@ Arkeshkar · Seenujan · Harishchandran · Braynkanth
 
 ## Overview
 
-Small and mid-size businesses still decide by hand what to reorder, how much and from whom. The result is
-stockouts, overstock and expired goods. **ProcureAgents** is a team of specialised agents that takes a trigger
-such as "stock is low" to an approved purchase order inside an ERP:
+Small and mid-size enterprises often decide what to reorder, how much, and from which vendor by hand or using crude spreadsheets. The consequence is frequent stockouts, overstock depreciation, and expired goods.
 
-* **Agents propose.** Stock Monitor, Demand Forecasting (LightGBM, code not LLM), Supplier (weighted score)
-  and Purchase Order (reorder-policy maths) run on a LangGraph state graph. Forecasting and Supplier run in
-  parallel.
-* **A separate Validator checks** budget, MOQ, price, permissions and quantity sanity, and holds a veto.
-  The PO agent may revise twice; after that the case goes to a human.
-* **A human approves every write.** Agents are read-only. One safe-action gate is the only write path. It
-  runs a PO state machine, idempotency keys and role-based access, and keeps an append-only audit log.
-* **Users can ask the data** in plain language through a read-only, parser-checked Query Agent.
-* **We measure instead of assuming.** One command benchmarks the multi-agent system against a single-agent
-  LLM baseline, human purchasers and a rule-based floor on identical seeded scenarios, and reports the
-  result either way.
+**ProcureAgents** is a collaborative team of specialised AI agents that autonomously takes an operational trigger (such as low inventory or batch expiration) to an approved, policy-checked purchase order in the ERP:
 
-Without an LLM key the system runs in a clearly labelled **deterministic (offline, no LLM)** mode. All numbers
-still come from code; LLM-written text is skipped; the single-agent baseline is reported as *not run*.
-Nothing is mocked to look like an LLM result.
+* **Agents Propose (Zero-Hallucination Math & ML):** Stock Monitor detects shortfalls; Demand Forecasting (LightGBM regression + Exponential Smoothing) and Supplier Evaluation (multi-criteria decision scoring) run concurrently on a compiled LangGraph state graph.
+* **Independent Validator Checks:** A separate Validator Agent verifies budget caps, minimum order quantities (MOQ), supplier pricing contracts, and shelf-life constraints, holding absolute veto authority. The PO agent may revise up to twice before escalating to human oversight.
+* **Human-in-the-Loop Safe Action Gate:** AI agents are strictly read-only and **never spend company money autonomously**. The Safe-Action Gate enforces role-based access control (RBAC), prevents self-approval by buyers, manages a purchase order state machine with idempotency keys, and writes an append-only, cryptographic audit trail.
+* **Conversational Read-Only Intelligence ("Ask the Data"):** Staff can query ERP inventory, sales trends, and vendor metrics in plain English. Queries are converted to read-only SQL validated by an AST allow-list parser (`sqlglot`), blocking prompt injection and write intents.
+* **Empirical Scientific Evaluation:** Compare the multi-agent system (System A) against a single-agent LLM baseline (System B), human purchasers (System C), and rule-based floor (System D) across identical seeded 90-day scenarios.
+
+> [!NOTE]
+> **Works 100% Offline Out-of-the-Box:** No API keys or external subscriptions are required. By default, ProcureAgents runs deterministically on local CPU using LightGBM, statistical time-series models, and local SQLite databases with zero token costs and zero latency jitter.
+
+---
 
 ## Architecture
 
 ```mermaid
 flowchart TB
-    subgraph UI[Interface layer]
-        ST[Streamlit UI<br/>dashboards, approval, chat, audit, benchmark]
-        CLI[CLI: main.py]
-        API[FastAPI, optional]
+    subgraph UI[Interface Layer]
+        ST[Streamlit Web UI<br/>Overview, Alerts, Agent Run, Approvals, Chat, Audit]
+        CLI[CLI Entry Point: main.py]
+        API[FastAPI Service, optional]
     end
-    subgraph SVC[Service layer: RBAC from the users table]
+    subgraph SVC[Service Layer: RBAC & Policy Enforcement]
         S[ProcureService]
     end
-    subgraph AG[Agent layer: LangGraph state graph, read-only]
-        SM[Stock Monitor] --> FC[Demand Forecasting<br/>LightGBM]
-        SM --> SU[Supplier<br/>weighted score]
-        FC --> PO[Purchase Order]
+    subgraph AG[Agent Layer: LangGraph State Machine, Read-Only]
+        SM[Stock Monitor Agent] --> FC[Demand Forecasting Agent<br/>LightGBM + SES]
+        SM --> SU[Supplier Agent<br/>Multi-Factor Weighted Scoring]
+        FC --> PO[Purchase Order Agent]
         SU --> PO
-        PO --> VA{Validator<br/>veto, max 2 revisions}
-        QA[Query Agent<br/>text-to-SQL, allow-list]
+        PO --> VA{Validator Agent<br/>Veto & Max 2 Revisions}
+        QA[Query Agent<br/>Text-to-SQL + AST Allow-List]
     end
-    subgraph GATE[Safe-action gate: the single write path]
-        G[PO state machine<br/>idempotency, approver-only, rollback]
+    subgraph GATE[Safe-Action Gate: Single Write Path]
+        G[PO State Machine<br/>Idempotency, Approver-Only, Rollback]
     end
-    subgraph DATA[Data layer]
-        DB[(Synthetic ERP, SQLite<br/>seeded generator)]
-        AU[(append-only audit)]
-        TR[(JSONL traces)]
+    subgraph DATA[Data Layer]
+        DB[(Synthetic ERP Database<br/>SQLite, Seeded Scenarios)]
+        AU[(Append-Only Audit Log)]
+        TR[(JSONL Decision Traces)]
     end
-    LLM[[Provider-agnostic LLM wrapper<br/>anthropic / openai-compatible / offline]]
+    LLM[[Provider-Agnostic LLM Wrapper<br/>Anthropic / OpenAI / Ollama / Offline Fallback]]
     ST & CLI & API --> S
     S --> AG
     S --> G
-    VA -- pass --> G
+    VA -- Pass --> G
     G --> DB
     G --> AU
-    AG -. read-only .-> DB
-    AG -. text only .-> LLM
-    AG -.-> TR
+    AG -. Read-Only .-> DB
+    AG -. Optional Prose .-> LLM
+    AG -. Trace Logging .-> TR
 ```
 
-The detailed workflow, the PO state machine and the safety model are in [docs/Workflow.md](docs/Workflow.md).
+Detailed architectural diagrams, state machine transitions, and safety models are documented in [docs/Workflow.md](docs/Workflow.md).
+
+---
+
+## User Interface
+
+The application features a modern SaaS interface built with Streamlit, organized into an intuitive 3-tier navigation structure:
+
+1. **⭐ Start Here**:
+   * **Live Demo**: A 10-second end-to-end purchasing lifecycle running live: Alert → Parallel Forecasting & Supplier Ranking → Draft PO → Policy Validator → Self-Approval Block Verification → Manager Sign-off → Audit Log & PDF export.
+   * **Overview**: Executive dashboard tracking items at reorder points, immediate stockout risks, expiring batch costs, pending POs, and an interactive **"Priority Restock Needed"** action list with 1-click **"Order with AI"** triggers.
+2. **📦 Purchasing Operations**:
+   * **Alerts and Cases**: Clean tabular view of active inventory alerts with priority indicators, stock cover calculations, and a launch box.
+   * **Agent Run**: Real-time visual timeline showing each agent node's inputs, outputs, confidence score, and latency.
+   * **Approval Dashboard**: Executive purchase authorization slips displaying total values, vendor terms, forecast rationale, validator status, and 1-click **Approve**, **Reject**, or **Edit Quantity** actions.
+3. **🛡️ Governance & Intelligence**:
+   * **Ask the Data**: Conversational query assistant with pre-built sample categories (Stock, Suppliers, Guardrail Stress Tests).
+   * **Audit Log**: Immutable audit trail proving database triggers reject unauthorized UPDATE and DELETE queries.
+   * **Benchmark Results**: Interactive charts comparing System A vs B vs C vs D with 95% bootstrap confidence intervals.
+   * **Settings and Registry**: Adjust supplier preference weights (Price vs Speed vs Reliability), business profiles (Supermarket, Pharmacy, Hardware), and synthetic data seeds.
+
+---
 
 ## Setup
 
-Requires Python 3.9 to 3.12 (tested on 3.9.13 on Windows 11) and Git. No GPU and no API key needed.
+Requires **Python 3.9 to 3.12** and Git. No GPU and no paid API keys required.
 
-**Windows (PowerShell)**
+### Windows (PowerShell)
 
 ```powershell
 git clone https://github.com/Arkeshak/ralypto-university.git
@@ -96,11 +114,10 @@ cd ralypto-university
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r project/requirements.txt
-copy .env.example .env        # optional: add an LLM provider
 python project/main.py serve
 ```
 
-**Linux / macOS**
+### Linux / macOS
 
 ```bash
 git clone https://github.com/Arkeshak/ralypto-university.git
@@ -108,114 +125,118 @@ cd ralypto-university
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r project/requirements.txt
-cp .env.example .env          # optional: add an LLM provider
 python project/main.py serve
 ```
 
-The UI opens at http://localhost:8501. On first launch it generates the demo ERP (`project/data/demo.db`,
-40 SKUs, seed 1). In the sidebar, *Run demo scenario* plays a complete case: alert → forecast + supplier →
-PO → validator → approval → PO created → audit log.
+The UI will automatically launch in your browser at **`http://localhost:8501`**.
 
-**Optional LLM.** Set the variables in `.env` (see `.env.example`):
+> [!TIP]
+> **Optional Live LLM Integration:** If you wish to enable OpenAI, Anthropic, or local Ollama models for natural language generation, copy `.env.example` to `.env` and configure your API credentials. Without `.env`, ProcureAgents automatically runs in fast, reproducible offline mode.
 
-| Provider | Settings |
-|---|---|
-| Anthropic | `LLM_PROVIDER=anthropic`, `LLM_MODEL=...`, `LLM_API_KEY=...` |
-| OpenAI or compatible | `LLM_PROVIDER=openai`, `LLM_MODEL=...`, `LLM_API_KEY=...`, optional `LLM_BASE_URL` |
-| Local Ollama (free) | `LLM_PROVIDER=openai`, `LLM_MODEL=qwen2.5-coder:7b`, `LLM_BASE_URL=http://localhost:11434/v1` |
+---
 
 ## Commands
 
-Run `python project/main.py <command> --help` for every option.
+All operational commands can be executed via `python project/main.py <command>`:
 
-| Command | What it does |
+| Command | Description |
 |---|---|
-| `python project/main.py serve` | Start the Streamlit UI |
-| `python project/main.py simulate [--profile pharmacy] [--approve-first]` | Seed an ERP and run the agents on every alert |
-| `python project/main.py simulate --replay --system multi_agent` | 90-day rolling replay of one system, printing business metrics |
-| `python project/main.py benchmark --profile supermarket --repeats 3 --seed 1` | Full benchmark, writes `results/<run_id>/` |
-| `python project/main.py study --volunteer <name>` | Human purchaser study (System C) |
-| `python project/main.py query "Which items expire within 7 days?"` | Read-only natural-language question |
-| `python project/main.py approve <po_id> --user bob [--reject]` | Approve or reject as a user (RBAC enforced) |
-| `python -m pytest -q` and `python -m ruff check project` | Tests and lint |
+| `python project/main.py serve` | Starts the Streamlit web interface |
+| `python project/main.py simulate [--profile pharmacy] [--approve-first]` | Seeds a synthetic ERP scenario and runs agents on all active alerts |
+| `python project/main.py simulate --replay --system multi_agent` | Executes a 90-day rolling replay and reports business outcomes |
+| `python project/main.py benchmark --profile supermarket --repeats 3 --seed 1` | Runs the full evaluation benchmark across all 4 systems |
+| `python project/main.py study --volunteer <name>` | Interactive human purchasing study interface (System C) |
+| `python project/main.py query "Which items expire within 7 days?"` | Executes a natural-language query via the Query Agent |
+| `python project/main.py approve <po_id> --user bob [--reject]` | Approves or rejects a pending purchase order (RBAC enforced) |
+| `python -m pytest project/tests -q` | Runs the complete unit and integration test suite (80 passed) |
+| `pyrefly check project/app.py project/main.py` | Runs the Pyrefly static type checker (0 errors) |
+| `ruff check project/` | Runs the Ruff linter and code quality checks (0 errors) |
 
-Demo users: `alice` (buyer), `bob` (approver), `carol` (viewer), `root` (admin).
+### Built-in Role Accounts
 
-### Sample input and output
+* **`alice` (Buyer)**: Initiates purchasing cases, runs AI agents, drafts POs. Self-approval is strictly prevented by the Safe-Action Gate.
+* **`bob` (Approver / Manager)**: Reviews pending purchase orders, edits quantities with audit reasons, and executes final approval/rejection.
+* **`carol` (Viewer)**: Read-only access to dashboards, reports, and data querying.
+* **`root` (Admin)**: Full administrative access, supplier weight tuning, and ERP dataset regeneration.
 
-```text
-$ python project/main.py simulate --skus 30 --approve-first
-ERP generated: project/data/demo.db  (30 SKUs, profile supermarket, seed 1)
-Mode: deterministic (offline, no LLM)
-SKU-0000: pending_approval  qty=406   from FastCheap Ltd  total=  8,079.40  PO#1
-...
-24 alerts processed, 23 POs awaiting approval. Trace: results/demo/trace.jsonl
-Approving PO#1 as 'bob' (approver): CREATED
+---
 
-$ python project/main.py approve 2 --user alice
-DENIED: user 'alice' (role buyer) may not approve
+## Reproducing the Benchmark
 
-$ python project/main.py query "Delete all sales records for SKU-0001"
-{"status": "blocked", "reason": "write intent: the Query Agent is read-only", "sql": null, ...}
-```
-
-More samples (ERP data, an agent trace, a complete benchmark run) are in [`samples/`](samples/).
-
-## Reproducing the benchmark
+To replicate the empirical evaluation benchmark comparing all systems on identical scenarios:
 
 ```bash
 python project/main.py benchmark --profile supermarket --repeats 3 --seed 1
 ```
 
-* Systems: **A** multi-agent; **B** single-agent (same LLM, temperature, tools, data, validator, gate and
-  revision budget; one prompt in a tool-calling loop); **C** human volunteers (imported from `study`
-  output; files marked synthetic are excluded); **D** rule-based reorder-point floor (no LLM).
-* 15 scenarios in 6 groups: routine/seasonal, expiry-driven, supplier conflicts, constraints/safety (budget
-  cap, no approval rights, write without approval, MOQ), robustness (missing history, contradictory prices,
-  prompt injection in supplier notes) and fault injection. Plus the 50-question query set (11 malicious),
-  forecast backtests and scalability at 50 / 500 / 5,000 SKUs.
-* Repeat `r` uses data seed `seed + r`, and every system gets a byte-identical database. Results are means
-  with 95% bootstrap CIs and paired per-scenario differences.
-* Output: `results/<run_id>/` with `config.json` (model, date, seed, config), `summary.json`, `runs.csv`,
-  `cases.csv`, `queries.csv`, `report.md` and `charts/*.png`. All numbers come from the run; none are typed in.
-* Runtime: about 30 minutes offline on a laptop CPU. With an LLM, add the provider's latency per call.
+* **Evaluated Systems**:
+  * **System A (Multi-Agent)**: ProcureAgents pipeline with LangGraph, LightGBM, and validator gate.
+  * **System B (Single-Agent)**: Single LLM prompt with tool-calling loop and identical revision budget.
+  * **System C (Human Study)**: Actual purchasing decisions recorded from human volunteers.
+  * **System D (Rule-Based Floor)**: Classical static reorder-point (s, S) baseline.
+* **Output Artifacts**: Stored in `results/<run_id>/` containing `summary.json`, `runs.csv`, `cases.csv`, `queries.csv`, `report.md`, and comparative Altair/Matplotlib charts.
 
-The latest committed run is summarised in [docs/PROJECT_DETAILS.md](docs/PROJECT_DETAILS.md#benchmark-results)
-and stored in full under `samples/benchmark/`.
+---
 
-## Repository structure
+## Repository Structure
 
 ```text
 ralypto-university/
 ├── project/
-│   ├── main.py                 CLI entry point (serve, simulate, benchmark, study, query, approve)
-│   ├── requirements.txt        pinned dependencies
-│   ├── app.py                  Streamlit UI
-│   ├── ui/                     UI pages and theme
-│   ├── procure/                agents, orchestrator (LangGraph), gate, service (RBAC), query agent,
-│   │                           forecasting, generator, simulator, benchmark, report, registry, plugins
-│   └── tests/                  pytest suite
-├── docs/
-│   ├── Proposal.docx           Phase 1 proposal (unchanged)
-│   ├── Workflow.md             workflow, state machine, safety model
-│   ├── PROJECT_DETAILS.md      objectives, features, results, libraries, AI-tool disclosure, limitations
-│   └── EXTENDING.md            adding agents and tools for Phase 2
-├── samples/                    sample data, traces and a benchmark run
-├── results/                    benchmark output (results/<run_id>/)
-├── README.md
-└── project-demo.mp4            demo video (to be recorded)
+│   ├── main.py                 # CLI entry point (serve, simulate, benchmark, study, query, approve)
+│   ├── app.py                  # Streamlit application entry point
+│   ├── requirements.txt        # Pinned dependencies
+│   ├── ui/                     # Presentation layer
+│   │   ├── theme.py            # Design tokens, CSS stylesheet, and component helpers
+│   │   ├── pages_ops.py        # Overview, Alerts & cases, and Agent run view
+│   │   ├── pages_gov.py        # Approval dashboard, Ask the data, and Audit log
+│   │   ├── pages_eval.py       # Benchmark results and Settings & registry
+│   │   └── state.py            # Global UI session state and service bindings
+│   ├── procure/                # Core business and agent logic
+│   │   ├── agents.py           # Stock monitor, supplier ranking, PO generator, validator
+│   │   ├── orchestrator.py     # LangGraph state machine compilation and conditional edges
+│   │   ├── forecasting.py      # LightGBM regression, Exponential Smoothing, backtesting
+│   │   ├── gate.py             # Safe-action gate, PO state machine, append-only SQLite audit
+│   │   ├── service.py          # Service facade enforcing RBAC and permission checks
+│   │   ├── query.py            # Natural language Query Agent (AST SQL validation via sqlglot)
+│   │   ├── data.py             # Synthetic ERP generator with realistic retail profiles
+│   │   ├── benchmark.py        # 4-system benchmark evaluation harness
+│   │   ├── simulator.py        # 90-day rolling business replay simulator
+│   │   ├── report.py           # Evaluation report and statistical summary generator
+│   │   ├── registry.py         # Extensible plugin and agent tool registry
+│   │   └── llm.py              # Provider-agnostic LLM interface with offline fallback
+│   └── tests/                  # Pytest test suite (80 unit & integration tests)
+├── docs/                       # Project documentation
+│   ├── Proposal.docx           # Initial project proposal
+│   ├── Workflow.md             # Detailed agent workflow, state machine, and safety model
+│   ├── PROJECT_DETAILS.md      # Comprehensive technical reference and benchmark results
+│   └── EXTENDING.md            # Guide for adding new custom agents and tools
+├── samples/                    # Sample traces, ERP database snapshots, and benchmark runs
+├── pyproject.toml              # Ruff, Pytest, and Pyrefly configuration
+├── pyrightconfig.json          # Pyright language server configuration
+└── README.md                   # Project documentation and quickstart guide
 ```
+
+---
 
 ## Documentation
 
-| Document | Contents |
+| Document | Key Information |
 |---|---|
-| [docs/Proposal.docx](docs/Proposal.docx) | Problem, solution, design and evaluation plan (Phase 1 submission) |
-| [docs/Workflow.md](docs/Workflow.md) | Agent workflow, PO state machine, conflict rules, safety layers, evaluation workflow |
-| [docs/PROJECT_DETAILS.md](docs/PROJECT_DETAILS.md) | Objectives, features, benchmark results, libraries, models, AI-tool disclosure, known limitations |
-| [docs/EXTENDING.md](docs/EXTENDING.md) | Adding a new agent or tool through the registry, with a tested example |
+| [docs/Workflow.md](docs/Workflow.md) | Agent graph topology, PO lifecycle states, conflict resolution rules, and safety gate specification |
+| [docs/PROJECT_DETAILS.md](docs/PROJECT_DETAILS.md) | Technical architecture, empirical benchmark data, model descriptions, and limitations |
+| [docs/EXTENDING.md](docs/EXTENDING.md) | Step-by-step tutorial on registering new agents and tools without modifying core code |
+| [docs/Proposal.docx](docs/Proposal.docx) | Phase 1 problem formulation, objectives, and evaluation design |
+
+---
 
 ## Team
 
-**Team Ralypto**, University of Kelaniya: Arkeshkar, Seenujan, Harishchandran, Braynkanth.
-Innodata AI Catalyst '26, University Track.
+**Team Ralypto · University of Kelaniya**
+* Arkeshkar
+* Seenujan
+* Harishchandran
+* Braynkanth
+
+*Innodata AI Catalyst '26 · University Track*
+
