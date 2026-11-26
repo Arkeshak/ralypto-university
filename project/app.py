@@ -38,11 +38,27 @@ def demo():
     if not al:
         T.empty("No alerts in the current ERP. Regenerate the data in Settings (admin).")
         return
-    open_pos = svc.purchase_orders("bob", "PENDING_APPROVAL")
-    open_skus = {p["sku"] for p in open_pos}
+    open_pos = svc.purchase_orders("bob")
+    open_skus = {p["sku"] for p in open_pos if p["status"] in ("PENDING_APPROVAL", "CREATED")}
     unhandled = [a for a in al if a.sku not in open_skus]
     target_pool = unhandled if unhandled else al
-    target = next((a for a in target_pool if a.kind in ("low_stock", "both")), target_pool[0])
+
+    if not unhandled:
+        st.info("All alert items currently have orders drafted or created in the ERP. Click below to reset fresh demo data.",
+                icon=":material/info:")
+        if st.button("Reset Synthetic ERP for Clean Replay", icon=":material/refresh:", type="primary"):
+            state.reset(1, 40, "supermarket")
+            st.rerun()
+
+    sku_picked = st.selectbox(
+        "Choose Item Alert to Demonstrate",
+        [a.sku for a in target_pool],
+        format_func=lambda s: next(
+            f"{a.sku} ({a.kind.replace('_', ' ').title()}) - Stock: {int(a.on_hand)} | Reorder Point: {int(a.reorder_point)}"
+            for a in target_pool if a.sku == s
+        ),
+    )
+    target = next((a for a in target_pool if a.sku == sku_picked), target_pool[0])
     st.markdown(
         f'<div class="pa-card">'
         f'<div style="font-size:1.05rem; font-weight:700; margin-bottom:4px;">Target Item: <code>{target.sku}</code> '
@@ -55,11 +71,6 @@ def demo():
         f'</div></div>',
         unsafe_allow_html=True,
     )
-    if not unhandled:
-        st.info("All alert items currently have orders drafted in the ERP. You can reset data below to replay clean.")
-        if st.button("Reset Synthetic ERP for Clean Replay", icon=":material/refresh:"):
-            state.reset(1, 40, "supermarket")
-            st.rerun()
 
     if not st.button("Play the full case", type="primary"):
         st.caption("The button runs every step for real against the synthetic ERP; nothing is pre-recorded.")
@@ -81,10 +92,13 @@ def demo():
             s1.update(label="No case result produced", state="error")
             st.warning("No case result was produced. Try another alert.")
             return
-        s1.update(label=f"Agents finished: {case.status}", state="complete")
+        s1.update(label=f"Agents finished: {case.status}",
+                  state="complete" if case.status == "pending_approval" else "error")
         st.session_state["last_case"] = case.task_id
         if case.status != "pending_approval" or case.po_id is None or case.draft is None:
-            st.warning(f"The case ended as '{case.status}' ({'; '.join(case.notes)}). Try another alert.")
+            st.warning(f"The case ended as '{case.status}' ({'; '.join(case.notes)}). "
+                       "This item did not require a new PO (e.g. existing orders already cover demand). "
+                       "Please pick another item from the dropdown above.")
             return
         po_id: int = case.po_id
         draft: DraftPO = case.draft
