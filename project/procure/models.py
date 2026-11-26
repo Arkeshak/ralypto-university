@@ -67,6 +67,7 @@ class DraftPO(BaseModel):
     rationale: str = ""
     revision: int = 0
     action: str = "order"       # order | markdown (do not reorder)
+    markdown_pct: int = 20      # recommended clearance discount percentage when action == "markdown"
     horizon_days: int = 0
     discrepancies: list[str] = Field(default_factory=list)  # LLM text that disagreed with the maths
 

@@ -52,25 +52,32 @@ def _ci_chart(df: pd.DataFrame, title: str):
 
 
 def benchmark():
-    T.header("Evaluation", "Benchmark results",
-             "Multi-agent (A) vs single-agent (B) vs human purchasers (C) vs rule-based floor (D) on identical seeded "
-             "scenarios. Every number is read from results/<run_id>/summary.json written by the benchmark command.")
+    T.header(
+        "Empirical Evaluation",
+        "System Benchmark & ROI Analysis",
+        "Comparative evaluation across rolling replay scenarios based on Proposal Section 7: "
+        "System A (Multi-Agent MAS) vs System B (Single-Agent) vs System C (Human Baseline) vs System D (Rule-Based Floor)."
+    )
     runs = _runs()
     if not runs:
         T.empty("No benchmark run found. Run:  python project/main.py benchmark --profile supermarket --repeats 3 --seed 1")
         return
-    run = st.selectbox("Run", list(runs))
+    run = st.selectbox("Select Evaluation Experiment Run", list(runs))
     path = runs[run]
     s = load_run(path)
     cfg, ov = s["config"], s["overall"]
     systems = cfg["systems_run"]
     if "llm" not in cfg["llm_mode"]:
-        T.callout("ℹ️ <b>Offline Evaluation Benchmark:</b> Deterministic scenario replay across System A "
-                  "(Multi-Agent) vs System C (Human) vs System D (Rule-based).", kind="info")
+        T.callout(
+            "**Offline Evaluation Benchmark (Proposal Section 7):** Deterministic scenario replay comparing "
+            "System A (Collaborative Multi-Agent Architecture) against System C (Human Study) and "
+            "System D (Rule-Based Static Baseline).",
+            kind="info"
+        )
     for sname, why in cfg.get("systems_not_run", {}).items():
         st.caption(f"{LABEL[sname]} not run: {why}")
-    tabs = st.tabs(["Outcomes", "Safety", "Cost and latency", "Paired comparison", "Scenario drill-down",
-                    "Supplier fairness", "Human study", "Forecast and queries", "Run config"])
+    tabs = st.tabs(["Inventory Outcomes", "Safety & Compliance", "Cost & Latency", "Paired Comparison", "Scenario Drill-Down",
+                    "Supplier Fairness", "Human Study", "Forecast & Queries", "Run Config"])
     with tabs[0]:
         c = st.columns(2)
         for i, m in enumerate(["stockout_rate", "overstock_value", "expiry_writeoff_value", "po_accuracy"]):
@@ -179,57 +186,99 @@ def benchmark():
 # ------------------------------------------------------------------ Settings / registry
 def settings():
     svc = state.svc()
-    T.header("Configuration", "Settings and registry",
-             "Registered agents and tools, the business profile, supplier weights and budget rules. "
-             "Changing settings requires the admin role.")
+    T.header(
+        "System Configuration",
+        "Enterprise Parameters & Industry Profiles",
+        "Configure supplier multi-criteria evaluation weights, corporate working capital limits, "
+        "and industry retail sector profiles (Proposal Section 3)."
+    )
     is_admin = svc.can(state.user(), "change_settings")
     a, b = st.columns(2)
     reg = svc.registry()
     with a:
-        st.markdown("**Registered agents**")
+        st.markdown("**Registered Autonomous Agents**")
         st.dataframe(pd.DataFrame([{"agent": k, "description": v} for k, v in reg["agents"].items()]), hide_index=True,
                      use_container_width=True)
-        st.markdown("**Registered tools**")
+        st.markdown("**Registered Deterministic Tools**")
         st.dataframe(pd.DataFrame([{"tool": k, "description": v} for k, v in reg["tools"].items()]), hide_index=True,
                      use_container_width=True)
-        st.caption("Add agents or tools through procure/registry.py without touching the orchestrator "
-                   "(see docs/EXTENDING.md).")
+        st.caption("Extensible: Add custom agents or tools via `procure/registry.py` without modifying orchestrator.")
     with b:
         env = svc.env
-        st.markdown("**Business profile and rules**")
+        st.markdown("**Corporate Governance & Operating Constraints**")
         spent = env.committed_spend()
-        T.kv([("Profile", T.esc(env.meta("profile"))), ("Service level z", env.profile["z"]),
-              ("Review period", f"{env.profile['review']} days"), ("Budget cap", T.money(env.budget_cap)),
-              ("Committed spend", T.money(spent)), ("Remaining budget", f"<b>{T.money(env.budget_cap - spent)}</b>"),
-              ("Max PO revisions", MAX_REVISIONS), ("Low-confidence threshold", LOW_CONFIDENCE),
-              ("Low-confidence buffer", f"+{(SAFETY_BUFFER - 1) * 100:.0f}%"), ("LLM mode", T.esc(env.llm.mode))])
-        st.markdown("**Supplier weights** (weighted score = price + lead time + reliability)")
+        rem_budget = env.budget_cap - spent
+        T.kv([
+            ("Active Profile", T.esc((env.meta("profile") or "supermarket").title())),
+            ("Service Level Target (z)", f"{env.profile['z']} (95% fill rate)"),
+            ("Review Cycle", f"{env.profile['review']} days"),
+            ("Working Capital Budget", T.money(env.budget_cap)),
+            ("Committed Spend", T.money(spent)),
+            ("Available Working Capital", f"${rem_budget:,.2f}"),
+            ("Max PO Revisions", f"{MAX_REVISIONS} attempts"),
+            ("ML Confidence Threshold", f"{LOW_CONFIDENCE:.2f}"),
+            ("Safety Buffer Multiplier", f"+{(SAFETY_BUFFER - 1) * 100:.0f}%"),
+            ("Execution Runtime", T.esc(env.llm.mode)),
+        ])
+        st.markdown("**Supplier Multi-Criteria Weights** (Score = Price + Lead Time + Reliability)")
         w = env.weights
-        p = st.slider("Price", 0.0, 1.0, float(w["price"]), 0.05, disabled=not is_admin)
-        ld = st.slider("Lead time", 0.0, 1.0, float(w["lead"]), 0.05, disabled=not is_admin)
-        r = st.slider("Reliability", 0.0, 1.0, float(w["reliability"]), 0.05, disabled=not is_admin)
+        p = st.slider("Price Weight (Cost Sensitivity)", 0.0, 1.0, float(w["price"]), 0.05, disabled=not is_admin)
+        ld = st.slider("Lead Time Weight (Delivery Speed)", 0.0, 1.0, float(w["lead"]), 0.05, disabled=not is_admin)
+        r = st.slider("Reliability Weight (Historical Fill Rate)", 0.0, 1.0, float(w["reliability"]), 0.05,
+                      disabled=not is_admin)
         c1, c2 = st.columns(2)
-        if c1.button("Apply weights", disabled=not is_admin, type="primary"):
+        if c1.button("Save Sourcing Weights", icon=":material/save:", disabled=not is_admin, type="primary"):
             try:
-                st.success(f"Applied (normalised): {svc.set_weights(state.user(), {'price': p, 'lead': ld, 'reliability': r})}")
+                applied = svc.set_weights(state.user(), {'price': p, 'lead': ld, 'reliability': r})
+                st.success(f"Weights saved and normalized: {applied}")
             except (PermissionDenied, ValueError) as e:
                 st.error(str(e))
-        if c2.button("Reset to defaults", disabled=not is_admin):
+        if c2.button("Reset Default Weights", icon=":material/restart_alt:", disabled=not is_admin):
             svc.set_weights(state.user(), dict(DEFAULT_WEIGHTS))
             st.rerun()
         if not is_admin:
-            st.caption("Read-only for your role. Switch to 'root (admin)' to change weights or reset data.")
+            st.caption(
+                "Read-only for Buyer and Approver roles. Switch to 'root (Administrator)' to adjust weights or reset data."
+            )
     st.markdown("---")
-    st.markdown("**Demo data**")
+    st.markdown("**Industry Retail Sector Profiles (Proposal Section 3)**")
+    p1, p2, p3 = st.columns(3)
+    with p1:
+        st.markdown(
+            '<div class="pa-card">'
+            '<div style="font-weight:700; color:#0F766E; margin-bottom:4px;">🛒 Supermarket</div>'
+            '<div style="font-size:0.85rem; color:#64748B;">High-velocity FMCG items, perishable batches with strict '
+            'expiry tracking, daily customer demand cadence.</div>'
+            '</div>',
+            unsafe_allow_html=True
+        )
+    with p2:
+        st.markdown(
+            '<div class="pa-card">'
+            '<div style="font-weight:700; color:#0F766E; margin-bottom:4px;">💊 Pharmacy</div>'
+            '<div style="font-size:0.85rem; color:#64748B;">Pharmaceuticals, batch expiry compliance, non-negotiable '
+            'service levels (99%), zero tolerance for stockouts.</div>'
+            '</div>',
+            unsafe_allow_html=True
+        )
+    with p3:
+        st.markdown(
+            '<div class="pa-card">'
+            '<div style="font-weight:700; color:#0F766E; margin-bottom:4px;">🔧 Hardware Store</div>'
+            '<div style="font-size:0.85rem; color:#64748B;">Lumpy and intermittent demand, bulky non-perishable goods, '
+            'longer supplier delivery lead times.</div>'
+            '</div>',
+            unsafe_allow_html=True
+        )
     c = st.columns([1, 1, 1, 1])
-    seed = c[0].number_input("Seed", 1, 9999, 1, disabled=not is_admin)
-    skus = c[1].number_input("SKUs", 10, 500, 40, disabled=not is_admin)
-    prof = c[2].selectbox("Profile", ["supermarket", "pharmacy", "hardware"], disabled=not is_admin)
+    seed = c[0].number_input("Random Seed", 1, 9999, 1, disabled=not is_admin)
+    skus = c[1].number_input("Number of SKUs", 10, 500, 40, disabled=not is_admin)
+    prof = c[2].selectbox("Select Sector Profile", ["supermarket", "pharmacy", "hardware"], disabled=not is_admin)
     c[3].write("")
-    if c[3].button("Regenerate ERP", disabled=not is_admin, use_container_width=True):
+    if c[3].button("Generate Fresh ERP Data", icon=":material/dataset:", disabled=not is_admin, use_container_width=True):
         state.reset(seed, skus, prof)
-        st.success("New synthetic ERP generated.")
+        st.success("New synthetic ERP dataset successfully generated.")
         st.rerun()
-    with st.expander("Workflow architecture specification (Compiled LangGraph)", expanded=False):
+    with st.expander("Workflow Architecture Specification (Compiled LangGraph)", expanded=False, icon=":material/schema:"):
         st.caption("State machine graph compiled from LangGraph agent nodes and conditional edges:")
         st.code(mermaid(), language="text")

@@ -161,10 +161,13 @@ def n_supplier(state: State, config):
 def n_po_agent(state: State, config):
     t0 = time.perf_counter()
     c = _ctx(config)
-    env, out = c["env"], {"notes": [], "trace": []}
+    env = c["env"]
+    out_notes: list[str] = []
+    out_trace: list[Message] = []
+    out: dict[str, Any] = {"notes": out_notes, "trace": out_trace}
     if state.get("used_fallback"):
         res = reorder_point_policy(env, state["sku"])
-        out["trace"].append(_msg(state, config, "orchestrator", {"fallback": True}, {"policy": "reorder_point"}, t0))
+        out_trace.append(_msg(state, config, "orchestrator", {"fallback": True}, {"policy": "reorder_point"}, t0))
         if not res:
             return out | {"draft": None}
         alert = res[0]
@@ -177,13 +180,14 @@ def n_po_agent(state: State, config):
         if fc.confidence < LOW_CONFIDENCE:  # conflict rule: low confidence -> buffer + flag
             mult = SAFETY_BUFFER
             out["review_flag"] = True
-            out["notes"].append(f"low forecast confidence ({fc.confidence}): +25% safety buffer, flagged for review")
+            out_notes.append(f"low forecast confidence ({fc.confidence}): +25% safety buffer, flagged for review")
         draft = c["fn"]["po_drafter"](env, state["alert"], fc, state["ranking"], 0, mult)
     if draft is not None:
-        out["trace"].append(_msg(state, config, "po_agent", {"alert": state["sku"]}, draft.model_dump(), t0,
-                                 conf=(out.get("forecast") or state.get("forecast")).confidence,
-                                 evidence=draft.discrepancies))
-        out["notes"] += draft.discrepancies
+        fc_obj = out.get("forecast") or state.get("forecast")
+        fc_conf = getattr(fc_obj, "confidence", None)
+        out_trace.append(_msg(state, config, "po_agent", {"alert": state["sku"]}, draft.model_dump(), t0,
+                             conf=fc_conf, evidence=draft.discrepancies))
+        out_notes.extend(draft.discrepancies)
     return out | {"draft": draft, "revision": 0}
 
 
@@ -280,7 +284,7 @@ def r_after_reviser(state: State):
 
 
 def build_graph(interactive: bool = False):
-    g = StateGraph(State)
+    g = StateGraph(State)  # type: ignore[arg-type]
     g.add_node("stock_monitor", n_stock_monitor)
     g.add_node("forecaster", n_forecaster)
     g.add_node("supplier", n_supplier)
@@ -321,17 +325,25 @@ def mermaid() -> str:
 
 
 # ------------------------------------------------------------------ public API
-def to_case(state: dict, latency_s: float = 0.0, mode: str = "") -> CaseFile:
+def _dump(v: Any) -> Any:
+    return v.model_dump() if hasattr(v, "model_dump") else v
+
+
+def to_case(state: Any, latency_s: float = 0.0, mode: str = "") -> CaseFile:
     status = state.get("status") or "open"
     d = state.get("draft")
     if status in ("open", "unrevisable"):
         status = "no_action" if d is not None and d.action == "markdown" else "escalated"
-    return CaseFile(task_id=state["task_id"], sku=state["sku"], requester=state["requester"], status=status,
-                    alert=state.get("alert"), forecast=state.get("forecast"), ranking=state.get("ranking"),
-                    draft=d, validation=state.get("validation"), validations=state.get("validations", []),
-                    po_id=state.get("po_id"), review_flag=bool(state.get("review_flag")),
-                    used_fallback=bool(state.get("used_fallback")), notes=list(state.get("notes", [])),
-                    trace=list(state.get("trace", [])), latency_s=latency_s, mode=mode)
+    return CaseFile(
+        task_id=state["task_id"], sku=state["sku"], requester=state["requester"], status=status,
+        alert=_dump(state.get("alert")), forecast=_dump(state.get("forecast")),
+        ranking=_dump(state.get("ranking")),
+        draft=_dump(d), validation=_dump(state.get("validation")),
+        validations=[_dump(v) for v in state.get("validations", [])],
+        po_id=state.get("po_id"), review_flag=bool(state.get("review_flag")),
+        used_fallback=bool(state.get("used_fallback")), notes=list(state.get("notes", [])),
+        trace=[_dump(m) for m in state.get("trace", [])], latency_s=latency_s, mode=mode,
+    )
 
 
 def _functions(reg: AgentRegistry) -> dict:

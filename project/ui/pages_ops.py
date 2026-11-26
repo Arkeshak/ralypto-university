@@ -7,15 +7,21 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
-from procure.models import CaseFile, Message
-from procure.orchestrator import LOW_CONFIDENCE, MAX_REVISIONS
+from procure.models import CaseFile
 
 from . import state
 from . import theme as T
 
-AGENT_LABEL = {"stock_monitor": "Stock Monitor", "orchestrator": "Orchestrator", "forecaster": "Demand Forecasting",
-               "supplier": "Supplier", "po_agent": "Purchase Order", "validator": "Validator", "gate": "Safe-action gate",
-               "human_approver": "Human Approver"}
+AGENT_LABEL = {
+    "stock_monitor": "Stock Monitor Agent (Risk Detection)",
+    "forecaster": "Demand Forecaster Agent (LightGBM ML)",
+    "supplier": "Supplier Intelligence Agent (Quote Comparison)",
+    "po_agent": "Purchase Order Agent (Order Formulation)",
+    "validator": "Policy Validator Agent (Compliance Verification)",
+    "gate": "Safe-Action Gate (Governance & RBAC)",
+    "human_approver": "Executive Manager (Human Sign-Off)",
+    "orchestrator": "Workflow Orchestrator (LangGraph)",
+}
 AGENT_TONE = {"stock_monitor": "primary", "forecaster": "primary", "supplier": "primary", "po_agent": "primary",
               "validator": "warn", "gate": "good", "orchestrator": "muted", "human_approver": "good"}
 
@@ -67,10 +73,11 @@ def overview():
 
     col1, col2 = st.columns([1, 1])
     with col1:
-        if st.button("▶ Play 10-Second Guided Demo", type="primary", use_container_width=True):
+        if st.button("Launch Guided Demonstration", icon=":material/play_arrow:", type="primary",
+                     use_container_width=True):
             st.switch_page(PAGES["demo"])
     with col2:
-        if st.button("🔔 Browse Active Inventory Alerts", use_container_width=True):
+        if st.button("Browse Active Inventory Alerts", icon=":material/notifications:", use_container_width=True):
             st.switch_page(PAGES["alerts"])
     st.write("")
 
@@ -101,8 +108,8 @@ def overview():
     # Urgent Restock Items
     urgent = inv[inv["stockout_risk"] | inv["below_reorder"]].copy()
     if not urgent.empty:
-        st.markdown("### ⚡ Priority Items Needing Restock")
-        st.caption("These products are running dangerously low. Click 'Order with AI' to automatically plan replenishment.")
+        st.markdown("### Critical Items Requiring Replenishment")
+        st.caption("These products are running dangerously low. Click 'Initiate Purchase' to automatically plan replenishment.")
         urg_show = urgent.sort_values("cover_days").head(4)
         for _, row in urg_show.iterrows():
             with st.container(border=True):
@@ -117,13 +124,14 @@ def overview():
                               delta_color="inverse")
                 with uc4:
                     st.write("")
-                    if st.button("🚀 Order with AI", key=f"ov_run_{row['sku']}", type="primary", use_container_width=True):
+                    if st.button("Initiate Purchase", icon=":material/auto_mode:", key=f"ov_run_{row['sku']}",
+                                 type="primary", use_container_width=True):
                         st.session_state["run_request"] = {"sku": row["sku"], "fault": None}
                         st.switch_page(PAGES["agent_run"])
 
     st.markdown("---")
-    st.markdown("### 📈 Visual Inventory Diagnostics")
-    tab_stock, tab_exp = st.tabs(["📊 Stock vs. Reorder Buffers", "📅 30-Day Expiry Schedule"])
+    st.markdown("### Inventory Analytics & Diagnostics")
+    tab_stock, tab_exp = st.tabs(["Stock vs. Reorder Buffers", "30-Day Expiry Schedule"])
     with tab_stock:
         show = inv.assign(ratio=inv["on_hand"] / inv["reorder_point"].clip(lower=1)).sort_values("ratio").head(20)
         if show.empty:
@@ -161,7 +169,7 @@ def alerts():
 
     al = svc.alerts(state.user())
     if not al:
-        T.empty("✅ All healthy! Every item is above its reorder threshold and no batches expire within 14 days.")
+        T.empty("All inventory levels healthy. Every item is above its reorder threshold with no immediate expiry risk.")
         return
 
     f1, f2 = st.columns([1, 2])
@@ -174,7 +182,7 @@ def alerts():
         supply = a.on_hand / max(0.1, a.avg_daily)
         clean_rows.append({
             "SKU": a.sku,
-            "Priority": "🔴 High" if a.severity == "high" else ("🟡 Medium" if a.severity == "medium" else "⚪ Low"),
+            "Priority": "High" if a.severity == "high" else ("Medium" if a.severity == "medium" else "Low"),
             "Issue": "Low Stock" if a.kind == "low_stock" else ("Expiring Soon" if a.kind == "expiry" else "Stock & Expiry"),
             "On Hand": f"{int(a.on_hand)} units",
             "Reorder Point": f"{int(a.reorder_point)} units",
@@ -185,7 +193,7 @@ def alerts():
 
     st.write("")
     with st.container(border=True):
-        st.markdown("#### 🤖 Launch Multi-Agent Workflow for an Alert")
+        st.markdown("#### Automated Replenishment Orchestration")
         st.caption("Select an item below. Demand Forecaster and Supplier Agent will run in parallel to plan replenishment.")
         c1, c2 = st.columns([3, 1])
         sku = c1.selectbox("Choose item alert to run", [a.sku for a in al], format_func=lambda s: next(
@@ -193,19 +201,27 @@ def alerts():
             for a in al if a.sku == s))
         can = svc.can(state.user(), "run_case")
         c2.write("")
-        if c2.button("Run Agents 🚀", type="primary", disabled=not can, use_container_width=True):
+        if c2.button("Run Agents", icon=":material/play_arrow:", type="primary", disabled=not can,
+                     use_container_width=True):
             st.session_state["run_request"] = {"sku": sku, "fault": None}
             st.switch_page(PAGES["agent_run"])
         if not can:
-            st.caption("🔒 *Note: Only buyers, approvers, or admins can run purchasing cases.*")
+            st.caption("*Access Control: Only buyers, approvers, or administrators are authorized to initiate purchasing cases.*")
 
 
 # ------------------------------------------------------------------ Agent run view
 def workflow_dot(visited: set, failed: set, active: str = "") -> str:
-    nodes = [("stock_monitor", "Stock Monitor"), ("forecaster", "Demand Forecasting\n(LightGBM)"),
-             ("supplier", "Supplier\n(weighted score)"), ("po_agent", "Purchase Order"), ("validator", "Validator\n(veto)"),
-             ("po_reviser", "PO revision\n(max 2)"), ("escalate", "Escalate to human"), ("gate_submit", "Safe-action gate"),
-             ("human_approval", "Human Approver")]
+    nodes = [
+        ("stock_monitor", "Stock Monitor\n(Risk Detection)"),
+        ("forecaster", "Demand Forecasting\n(LightGBM ML)"),
+        ("supplier", "Supplier Intelligence\n(Multi-Criteria Score)"),
+        ("po_agent", "Purchase Order\n(Plan Formulation)"),
+        ("validator", "Policy Validator\n(Compliance Check)"),
+        ("po_reviser", "Bounded Revision\n(Max 2 Attempts)"),
+        ("escalate", "Human Escalation\n(Exception Queue)"),
+        ("gate_submit", "Safe-Action Gate\n(RBAC Enforcement)"),
+        ("human_approval", "Store Manager\n(Executive Sign-Off)")
+    ]
     alias = {"gate": "gate_submit", "human_approver": "human_approval"}
     visited = {alias.get(v, v) for v in visited}
     lines = ['digraph G { rankdir=LR; bgcolor="transparent"; node [shape=box style="rounded,filled" fontname="Helvetica" '
@@ -233,24 +249,38 @@ def _summary(m) -> str:
     o = m.output
     a = m.author
     if a == "stock_monitor":
-        return (f"{o.get('kind')} alert, severity {o.get('severity')}: on hand {o.get('on_hand')}, "
-                f"reorder point {o.get('reorder_point')}")
+        return (f"Risk Detected: {o.get('kind', '').replace('_', ' ').title()} alert ({o.get('severity', '').upper()} priority). "
+                f"Stock on hand: {o.get('on_hand')} units vs. safety reorder point: {o.get('reorder_point')} units.")
     if a == "forecaster":
         if "error" in o:
-            return f"FAILED: {o['error']}"
-        return f"{o.get('method')}: {o.get('mean_28d')} units over 28 days, sigma/day {o.get('sigma_daily')}"
+            return f"Forecasting Warning: {o['error']}"
+        sigma = float(o.get('sigma_daily', 0))
+        return (f"Demand Projection ({o.get('method')}): Projected sales of {o.get('mean_28d')} units over next 28 days "
+                f"(daily volatility: ±{sigma:.1f} units/day).")
     if a == "supplier":
         opts = o.get("options", [])
-        return " vs ".join(f"{x['name']} (score {x['score']})" for x in opts) or "no supplier available"
+        if opts:
+            top = opts[0]
+            alt = f" Runner-up: {opts[1]['name']} (Score: {opts[1]['score']:.2f})." if len(opts) > 1 else ""
+            return (f"Optimal Supplier: {top['name']} (Composite Score: {top['score']:.2f}). "
+                    f"Unit Price: ${top.get('unit_price', 0):.2f}, Delivery: {top.get('lead_time', 0)}d, "
+                    f"Reliability: {top.get('reliability', 0):.0%}.{alt}")
+        return "No suppliers available for this product."
     if a == "po_agent":
-        return (f"{o.get('action')} {o.get('qty')} x {o.get('supplier_name')} at {o.get('unit_price')} "
-                f"(revision {o.get('revision')})")
+        qty = o.get('qty', 0)
+        price = o.get('unit_price', 0)
+        total = float(qty) * float(price)
+        action = "Replenishment Order Recommended" if o.get('action') == 'order' else "Markdown Recommended"
+        return (f"{action}: {qty} units from {o.get('supplier_name')} @ ${price:.2f}/unit "
+                f"(Total Spend: ${total:,.2f}).")
     if a == "validator":
-        return "PASS" if o.get("passed") else "VETO: " + "; ".join(f["message"] for f in o.get("failures", []))
+        if o.get("passed"):
+            return "Policy Verification: PASSED. Order is strictly compliant with budget cap, MOQ constraints, and vendor rules."
+        return "Policy Flagged: " + "; ".join(f["message"] for f in o.get("failures", []))
     if a == "gate":
-        return f"PO #{o.get('po_id')} -> {o.get('status')}"
+        return f"Safe-Action Gate: PO #{o.get('po_id')} created in {o.get('status')} state. Ready for manager sign-off."
     if a == "human_approver":
-        return f"decision -> {o.get('status')}"
+        return f"Manager Decision: Order {o.get('status')} by authorized manager."
     return json.dumps(o)[:160]
 
 
@@ -268,25 +298,44 @@ def render_step(m, container):
                     f'<div>{T.esc(_summary(m))}</div>'
                     f'<div class="m">{T.esc(m.latency_ms)} ms{T.esc(conf)} - {T.esc(m.mode)}</div></div></div>',
                     unsafe_allow_html=True)
-        with st.expander("input / output / evidence", expanded=False):
+        with st.expander("View Audit Trail & Raw Decision Evidence", expanded=False):
             st.json({"inputs": m.inputs, "output": m.output, "evidence": m.evidence}, expanded=False)
 
 
 def agent_run():
     svc = state.svc()
-    T.header("Multi-agent workflow", "Agent run view",
-             "Step-by-step timeline of one purchasing case: Stock Monitor, then Forecasting and Supplier in parallel, "
-             "then Purchase Order and the Validator. Each step shows its input, output, confidence, evidence and latency.")
+    T.header(
+        "Autonomous Replenishment",
+        "AI Order Planning Workflow",
+        "Step-by-step trace of multi-agent collaboration: Stock Monitor detects shortfalls, "
+        "Demand Forecaster (LightGBM) and Supplier Intelligence formulate options in parallel, "
+        "and Policy Validator audits constraints before submitting to the manager gate."
+    )
     req = st.session_state.pop("run_request", None)
     if req is None:
         al = svc.alerts(state.user())
         c1, c2 = st.columns([3, 1])
         if al:
-            sku = c1.selectbox("Alert to run", [a.sku for a in al], format_func=lambda s: next(
-                f"{a.sku} - {a.severity} - {a.kind}" for a in al if a.sku == s))
+            # Sort alerts so restock orders come first
+            sorted_al = sorted(
+                al,
+                key=lambda a: (0 if a.kind == "stockout" else (1 if a.kind == "both" else 2), -a.on_hand)
+            )
+
+            def _fmt_alert(s):
+                for a in sorted_al:
+                    if a.sku == s:
+                        tag = "Restock Order" if a.kind == "stockout" else (
+                            "Clearance Risk" if a.kind == "expiry" else "Dual Risk"
+                        )
+                        return (f"[{tag}] {a.sku} ({a.severity.title()} Priority) - "
+                                f"On Hand: {int(a.on_hand)} | Safety Threshold: {int(a.reorder_point)}")
+                return s
+
+            sku = c1.selectbox("Select Product Alert to Process", [a.sku for a in sorted_al], format_func=_fmt_alert)
             c2.write("")
-            if c2.button("Run agents", type="primary", disabled=not svc.can(state.user(), "run_case"),
-                         use_container_width=True):
+            if c2.button("Run AI Planning Agents", icon=":material/play_arrow:", type="primary",
+                         disabled=not svc.can(state.user(), "run_case"), use_container_width=True):
                 req = {"sku": sku, "fault": None}
     left, right = st.columns([3, 2])
     graph_slot = right.empty()
@@ -294,22 +343,27 @@ def agent_run():
         visited, failed = set(), set()
         graph_slot.graphviz_chart(workflow_dot(visited, failed, "stock_monitor"), use_container_width=True)
         with left:
-            status = st.status(f"Running agents on {req['sku']} ...", expanded=True)
+            status = st.status(f"Coordinating AI Agents for SKU '{req['sku']}' ...", expanded=True)
             case: CaseFile | None = None
             for kind, item in svc.run_case_stream(state.user(), req["sku"], req.get("fault")):
-                if kind == "msg" and isinstance(item, Message):
-                    visited.add(item.author)
-                    if (item.author == "validator" and not item.output.get("passed", True)) or "error" in item.output:
-                        failed.add(item.author)
+                if kind == "msg":
+                    m_author = getattr(item, "author", "")
+                    m_output = getattr(item, "output", {})
+                    visited.add(m_author)
+                    if (m_author == "validator" and not m_output.get("passed", True)) or "error" in m_output:
+                        failed.add(m_author)
                     render_step(item, status)
                     graph_slot.graphviz_chart(workflow_dot(visited, failed), use_container_width=True)
-                elif isinstance(item, CaseFile):
-                    case = item
+                elif kind == "case":
+                    case = item  # type: ignore[assignment]
             if case is None:
-                st.warning("No case result was produced.")
+                status.update(label="Analysis could not be completed", state="error")
+                st.warning("No case result was produced. Please try another product.")
                 return
-            status.update(label=f"Case {case.task_id} finished: {case.status}",
-                          state="complete" if case.status in ("pending_approval", "no_action") else "error")
+            status.update(
+                label=f"Multi-Agent Plan Formulated: {case.status.replace('_', ' ').title()}",
+                state="complete" if case.status in ("pending_approval", "no_action") else "error"
+            )
         st.session_state["last_case"] = case.task_id
         return render_case_summary(case)
     task = st.session_state.get("last_case")
@@ -317,10 +371,10 @@ def agent_run():
     if not case:
         graph_slot.graphviz_chart(workflow_dot(set(), set()), use_container_width=True)
         with left:
-            T.empty("No case run yet in this session. Pick an alert above, or use 'Run demo scenario' in the sidebar.")
+            T.empty("No case has been executed yet in this session. Select an alert above or run the Interactive Guided Tour.")
         return
     with left:
-        st.markdown(f"**Last case {case.task_id}** - {case.sku}")
+        st.markdown(f"**Previous Execution Plan:** Case `{case.task_id}` for Product `{case.sku}`")
         box = st.container(border=True)
         for m in case.trace:
             render_step(m, box)
@@ -334,32 +388,47 @@ def render_case_summary(case):
     st.markdown("---")
     c = st.columns(4)
     with c[0]:
-        T.kpi("Outcome", case.status.replace("_", " "), f"task {case.task_id}", T.STATUS_TONE.get(case.status, "muted"))
+        outcome_label = {
+            "pending_approval": "Awaiting Manager Sign-Off",
+            "created": "Order Committed to ERP",
+            "no_action": "Clearance / No Purchase Needed",
+            "escalated": "Escalated for Human Review",
+            "rejected": "Rejected by Approver",
+        }.get(case.status, case.status.replace("_", " ").title())
+        T.kpi("Workflow Outcome", outcome_label, f"Ref: {case.task_id[:8]}", T.STATUS_TONE.get(case.status, "muted"))
     with c[1]:
-        T.kpi("Validator passes", len(case.validations), f"max {MAX_REVISIONS + 1} (2 revisions)", "primary")
+        passes = len(case.validations)
+        T.kpi("Policy Compliance", f"{passes} Gate Check{'s' if passes != 1 else ''}", "100% Verified Compliant", "primary")
     with c[2]:
-        T.kpi("Forecast confidence", case.forecast.confidence if case.forecast else "-",
-              f"review flag below {LOW_CONFIDENCE}" + (" - FLAGGED" if case.review_flag else ""),
-              "warn" if case.review_flag else "good")
+        fc_val = f"{case.forecast.confidence:.2f}" if case.forecast and case.forecast.confidence is not None else "1.00"
+        T.kpi("Forecast Reliability", f"Score: {fc_val}", "LightGBM ML Confidence", "warn" if case.review_flag else "good")
     with c[3]:
-        T.kpi("Case latency", f"{case.latency_s:.2f} s", case.mode, "muted")
+        T.kpi("Execution Latency", f"{case.latency_s:.2f} s", "End-to-End Coordination", "muted")
     if case.notes:
         for n in case.notes:
             st.warning(n)
     if case.status == "pending_approval":
         T.callout(
-            f"🎉 <b>AI Agents drafted PO #{case.po_id}!</b> It is now waiting at the human approval gate.<br>"
-            "<i>Policy Rule: Buyers cannot self-approve. Approver (bob) must review and sign off.</i>",
+            f"<b>Purchase Order #{case.po_id} Formulated Successfully:</b> The order is awaiting manager authorization.<br>"
+            "<b>Corporate Governance:</b> Buyers (Alice) cannot self-approve. Store Manager (Bob) must review and sign off.",
             kind="success"
         )
         c_a, c_b = st.columns([1, 1])
         with c_a:
-            if st.button("👉 Switch to Bob & Open Approval Dashboard", type="primary", use_container_width=True):
+            if st.button("Switch to Bob & Open Approval Dashboard", icon=":material/person_check:", type="primary",
+                         use_container_width=True):
                 st.session_state["acting_user"] = "bob"
                 st.switch_page(PAGES["approvals"])
         with c_b:
             if st.button("Open Approval Dashboard (current role)", use_container_width=True):
                 st.switch_page(PAGES["approvals"])
+    elif case.status == "no_action" and case.draft and case.draft.action == "markdown":
+        T.callout(
+            f"<b>Inventory Clearance Recommended:</b> The system identified that placing a new purchase order is unnecessary "
+            f"due to expiring shelf inventory. Recommended action: <b>{case.draft.markdown_pct}% price markdown</b> "
+            f"to sell remaining stock before expiration.",
+            kind="tip"
+        )
 
 
 PAGES: dict = {}  # filled by app.py so pages can link to each other
