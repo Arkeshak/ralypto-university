@@ -65,7 +65,7 @@ def benchmark():
     cfg, ov = s["config"], s["overall"]
     systems = cfg["systems_run"]
     if "llm" not in cfg["llm_mode"]:
-        T.callout("ℹ️ <b>Offline Evaluation Benchmark:</b> Deterministic scenario replay across System A "
+        T.callout("<b>Offline Evaluation Benchmark:</b> Deterministic scenario replay across System A "
                   "(Multi-Agent) vs System C (Human) vs System D (Rule-based).", kind="info")
     for sname, why in cfg.get("systems_not_run", {}).items():
         st.caption(f"{LABEL[sname]} not run: {why}")

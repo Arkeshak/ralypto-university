@@ -165,7 +165,7 @@ def approvals():
     can_act = svc.can(state.user(), "approve")
     if not can_act:
         sw_col1, sw_col2 = st.columns([3, 1])
-        sw_col1.info(f"Signed in as <b>{state.user()} ({state.role()})</b> (read-only for approvals).",
+        sw_col1.info(f"Signed in as **{state.user()} ({state.role()})** (read-only for approvals).",
                      icon=":material/info:")
         if sw_col2.button("Switch to Bob (Approver)", icon=":material/person_check:", type="primary",
                           use_container_width=True):
