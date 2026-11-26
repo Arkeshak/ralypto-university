@@ -321,18 +321,24 @@ def mermaid() -> str:
 
 
 # ------------------------------------------------------------------ public API
+def _dump(v: Any) -> Any:
+    return v.model_dump() if hasattr(v, "model_dump") else v
+
+
 def to_case(state: Any, latency_s: float = 0.0, mode: str = "") -> CaseFile:
     status = state.get("status") or "open"
     d = state.get("draft")
     if status in ("open", "unrevisable"):
         status = "no_action" if d is not None and d.action == "markdown" else "escalated"
-    return CaseFile.model_construct(
+    return CaseFile(
         task_id=state["task_id"], sku=state["sku"], requester=state["requester"], status=status,
-        alert=state.get("alert"), forecast=state.get("forecast"), ranking=state.get("ranking"),
-        draft=d, validation=state.get("validation"), validations=list(state.get("validations", [])),
+        alert=_dump(state.get("alert")), forecast=_dump(state.get("forecast")),
+        ranking=_dump(state.get("ranking")),
+        draft=_dump(d), validation=_dump(state.get("validation")),
+        validations=[_dump(v) for v in state.get("validations", [])],
         po_id=state.get("po_id"), review_flag=bool(state.get("review_flag")),
         used_fallback=bool(state.get("used_fallback")), notes=list(state.get("notes", [])),
-        trace=list(state.get("trace", [])), latency_s=latency_s, mode=mode,
+        trace=[_dump(m) for m in state.get("trace", [])], latency_s=latency_s, mode=mode,
     )
 
 
