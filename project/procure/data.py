@@ -102,7 +102,19 @@ def generate(path: str, seed: int = 1, n_skus: int = 40, profile: str = "superma
              anomaly_frac: float = 0.15, low_stock_frac: float = 0.0) -> World:
     """Create the ERP database at `path` (overwritten). Same arguments -> identical bytes."""
     if os.path.exists(path):
-        os.remove(path)
+        try:
+            os.remove(path)
+        except OSError:
+            try:
+                c = sqlite3.connect(path)
+                tables = [r[0] for r in c.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()]
+                for t in tables:
+                    if t != "sqlite_sequence":
+                        c.execute(f"DROP TABLE IF EXISTS {t}")
+                c.commit()
+                c.close()
+            except Exception:
+                pass
     prof = PROFILES[profile]
     rng = random.Random(seed)
     arng = random.Random(f"{seed}-anomaly")   # separate stream so options do not reshuffle base data
@@ -179,8 +191,8 @@ def generate(path: str, seed: int = 1, n_skus: int = 40, profile: str = "superma
         if cheapest_out_of_stock:
             min(sku_prices, key=lambda p: p[2])[5] = 0
         if contradictory_prices:
-            p0 = min(sku_prices, key=lambda p: p[2])
-            sku_prices.append([p0[0], sku, round(p0[2] * 0.6, 2), p0[3], p0[4], 1])  # second, conflicting row
+            p0 = min(sku_prices, key=lambda p: float(p[2]))
+            sku_prices.append([p0[0], sku, round(float(p0[2]) * 0.6, 2), p0[3], p0[4], 1])  # second, conflicting row
         prices += [tuple(p) for p in sku_prices]
     db.executemany("INSERT INTO items VALUES (?,?,?,?,?,?)", items)
     db.executemany("INSERT INTO stock VALUES (?,?)", stock)

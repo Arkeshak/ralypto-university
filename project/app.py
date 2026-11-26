@@ -19,7 +19,7 @@ if HERE not in sys.path:
 import pandas as pd  # noqa: E402
 import streamlit as st  # noqa: E402
 
-from procure.models import CaseFile, DraftPO, Message  # noqa: E402
+from procure.models import CaseFile, DraftPO  # noqa: E402
 from ui import pages_eval, pages_gov, pages_ops, state  # noqa: E402
 from ui import theme as T  # noqa: E402
 
@@ -38,7 +38,11 @@ def demo():
     if not al:
         T.empty("No alerts in the current ERP. Regenerate the data in Settings (admin).")
         return
-    target = next((a for a in al if a.kind in ("low_stock", "both")), al[0])
+    open_pos = svc.purchase_orders("bob", "PENDING_APPROVAL")
+    open_skus = {p["sku"] for p in open_pos}
+    unhandled = [a for a in al if a.sku not in open_skus]
+    target_pool = unhandled if unhandled else al
+    target = next((a for a in target_pool if a.kind in ("low_stock", "both")), target_pool[0])
     st.markdown(
         f'<div class="pa-card">'
         f'<div style="font-size:1.05rem; font-weight:700; margin-bottom:4px;">Target Item: <code>{target.sku}</code> '
@@ -51,6 +55,12 @@ def demo():
         f'</div></div>',
         unsafe_allow_html=True,
     )
+    if not unhandled:
+        st.info("All alert items currently have orders drafted in the ERP. You can reset data below to replay clean.")
+        if st.button("Reset Synthetic ERP for Clean Replay", icon=":material/refresh:"):
+            state.reset(1, 40, "supermarket")
+            st.rerun()
+
     if not st.button("Play the full case", type="primary"):
         st.caption("The button runs every step for real against the synthetic ERP; nothing is pre-recorded.")
         return
@@ -61,13 +71,14 @@ def demo():
     with left:
         s1 = st.status("Step 1-4: agents run as buyer 'alice'", expanded=True)
         for kind, item in svc.run_case_stream("alice", target.sku):
-            if kind == "msg" and isinstance(item, Message):
-                visited.add(item.author)
+            if kind == "msg":
+                visited.add(getattr(item, "author", ""))
                 pages_ops.render_step(item, s1)
                 graph_slot.graphviz_chart(pages_ops.workflow_dot(visited, set()), use_container_width=True)
-            elif isinstance(item, CaseFile):
-                case = item
+            elif kind == "case":
+                case = item  # type: ignore[assignment]
         if case is None:
+            s1.update(label="No case result produced", state="error")
             st.warning("No case result was produced. Try another alert.")
             return
         s1.update(label=f"Agents finished: {case.status}", state="complete")

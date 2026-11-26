@@ -7,7 +7,7 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
-from procure.models import CaseFile, Message
+from procure.models import CaseFile
 from procure.orchestrator import LOW_CONFIDENCE, MAX_REVISIONS
 
 from . import state
@@ -300,15 +300,18 @@ def agent_run():
             status = st.status(f"Running agents on {req['sku']} ...", expanded=True)
             case: CaseFile | None = None
             for kind, item in svc.run_case_stream(state.user(), req["sku"], req.get("fault")):
-                if kind == "msg" and isinstance(item, Message):
-                    visited.add(item.author)
-                    if (item.author == "validator" and not item.output.get("passed", True)) or "error" in item.output:
-                        failed.add(item.author)
+                if kind == "msg":
+                    m_author = getattr(item, "author", "")
+                    m_output = getattr(item, "output", {})
+                    visited.add(m_author)
+                    if (m_author == "validator" and not m_output.get("passed", True)) or "error" in m_output:
+                        failed.add(m_author)
                     render_step(item, status)
                     graph_slot.graphviz_chart(workflow_dot(visited, failed), use_container_width=True)
-                elif isinstance(item, CaseFile):
-                    case = item
+                elif kind == "case":
+                    case = item  # type: ignore[assignment]
             if case is None:
+                status.update(label="No case result produced", state="error")
                 st.warning("No case result was produced.")
                 return
             status.update(label=f"Case {case.task_id} finished: {case.status}",
