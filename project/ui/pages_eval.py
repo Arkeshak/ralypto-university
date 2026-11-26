@@ -209,7 +209,7 @@ def settings():
         spent = env.committed_spend()
         rem_budget = env.budget_cap - spent
         T.kv([
-            ("Active Profile", T.esc(env.meta("profile").title())),
+            ("Active Profile", T.esc((env.meta("profile") or "supermarket").title())),
             ("Service Level Target (z)", f"{env.profile['z']} (95% fill rate)"),
             ("Review Cycle", f"{env.profile['review']} days"),
             ("Working Capital Budget", T.money(env.budget_cap)),

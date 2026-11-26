@@ -305,8 +305,8 @@ def audit():
     df = df.assign(detail=df["detail"].map(lambda d: json.dumps(json.loads(d)) if d else ""))
     m1, m2, m3 = st.columns(3)
     m1.metric("Audit Records Logged", len(df))
-    m2.metric("Unauthorized Attempts Blocked", int(df["action"].str.startswith("DENIED").sum()))
-    approvals_count = int(df["action"].isin(["PENDING_APPROVAL->APPROVED", "PENDING_APPROVAL->REJECTED"]).sum())
+    m2.metric("Unauthorized Attempts Blocked", df["action"].str.startswith("DENIED").sum())
+    approvals_count = df["action"].isin(["PENDING_APPROVAL->APPROVED", "PENDING_APPROVAL->REJECTED"]).sum()
     m3.metric("Executive Approvals Recorded", approvals_count)
     st.dataframe(df.sort_values("id", ascending=False), hide_index=True, use_container_width=True, height=480)
     st.download_button("Export to CSV", df.to_csv(index=False).encode("utf-8"), "audit_log.csv", "text/csv",

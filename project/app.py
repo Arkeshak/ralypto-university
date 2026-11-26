@@ -227,8 +227,9 @@ with st.sidebar:
             st.session_state["acting_user"] = "alice"
             st.rerun()
 
+    profile_name = str(svc.env.meta("profile") or "supermarket").title()
     st.markdown(f'<div class="pa-mode">Mode: {T.esc(svc.env.llm.mode)}<br>ERP day {svc.env.today} - '
-                f'{T.esc(svc.env.meta("profile").title())}</div>', unsafe_allow_html=True)
+                f'{T.esc(profile_name)}</div>', unsafe_allow_html=True)
     st.write("")
     if st.button("Launch Guided Tour", icon=":material/play_arrow:", type="primary", use_container_width=True):
         st.switch_page(P["demo"])
