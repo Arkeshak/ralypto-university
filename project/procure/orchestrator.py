@@ -321,17 +321,19 @@ def mermaid() -> str:
 
 
 # ------------------------------------------------------------------ public API
-def to_case(state: dict, latency_s: float = 0.0, mode: str = "") -> CaseFile:
+def to_case(state: Any, latency_s: float = 0.0, mode: str = "") -> CaseFile:
     status = state.get("status") or "open"
     d = state.get("draft")
     if status in ("open", "unrevisable"):
         status = "no_action" if d is not None and d.action == "markdown" else "escalated"
-    return CaseFile(task_id=state["task_id"], sku=state["sku"], requester=state["requester"], status=status,
-                    alert=state.get("alert"), forecast=state.get("forecast"), ranking=state.get("ranking"),
-                    draft=d, validation=state.get("validation"), validations=state.get("validations", []),
-                    po_id=state.get("po_id"), review_flag=bool(state.get("review_flag")),
-                    used_fallback=bool(state.get("used_fallback")), notes=list(state.get("notes", [])),
-                    trace=list(state.get("trace", [])), latency_s=latency_s, mode=mode)
+    return CaseFile.model_construct(
+        task_id=state["task_id"], sku=state["sku"], requester=state["requester"], status=status,
+        alert=state.get("alert"), forecast=state.get("forecast"), ranking=state.get("ranking"),
+        draft=d, validation=state.get("validation"), validations=list(state.get("validations", [])),
+        po_id=state.get("po_id"), review_flag=bool(state.get("review_flag")),
+        used_fallback=bool(state.get("used_fallback")), notes=list(state.get("notes", [])),
+        trace=list(state.get("trace", [])), latency_s=latency_s, mode=mode,
+    )
 
 
 def _functions(reg: AgentRegistry) -> dict:
