@@ -67,10 +67,11 @@ def overview():
 
     col1, col2 = st.columns([1, 1])
     with col1:
-        if st.button("▶ Play 10-Second Guided Demo", type="primary", use_container_width=True):
+        if st.button("Launch Guided Demonstration", icon=":material/play_arrow:", type="primary",
+                     use_container_width=True):
             st.switch_page(PAGES["demo"])
     with col2:
-        if st.button("🔔 Browse Active Inventory Alerts", use_container_width=True):
+        if st.button("Browse Active Inventory Alerts", icon=":material/notifications:", use_container_width=True):
             st.switch_page(PAGES["alerts"])
     st.write("")
 
@@ -101,8 +102,8 @@ def overview():
     # Urgent Restock Items
     urgent = inv[inv["stockout_risk"] | inv["below_reorder"]].copy()
     if not urgent.empty:
-        st.markdown("### ⚡ Priority Items Needing Restock")
-        st.caption("These products are running dangerously low. Click 'Order with AI' to automatically plan replenishment.")
+        st.markdown("### Critical Items Requiring Replenishment")
+        st.caption("These products are running dangerously low. Click 'Initiate Purchase' to automatically plan replenishment.")
         urg_show = urgent.sort_values("cover_days").head(4)
         for _, row in urg_show.iterrows():
             with st.container(border=True):
@@ -117,13 +118,14 @@ def overview():
                               delta_color="inverse")
                 with uc4:
                     st.write("")
-                    if st.button("🚀 Order with AI", key=f"ov_run_{row['sku']}", type="primary", use_container_width=True):
+                    if st.button("Initiate Purchase", icon=":material/auto_mode:", key=f"ov_run_{row['sku']}",
+                                 type="primary", use_container_width=True):
                         st.session_state["run_request"] = {"sku": row["sku"], "fault": None}
                         st.switch_page(PAGES["agent_run"])
 
     st.markdown("---")
-    st.markdown("### 📈 Visual Inventory Diagnostics")
-    tab_stock, tab_exp = st.tabs(["📊 Stock vs. Reorder Buffers", "📅 30-Day Expiry Schedule"])
+    st.markdown("### Inventory Analytics & Diagnostics")
+    tab_stock, tab_exp = st.tabs(["Stock vs. Reorder Buffers", "30-Day Expiry Schedule"])
     with tab_stock:
         show = inv.assign(ratio=inv["on_hand"] / inv["reorder_point"].clip(lower=1)).sort_values("ratio").head(20)
         if show.empty:
@@ -161,7 +163,7 @@ def alerts():
 
     al = svc.alerts(state.user())
     if not al:
-        T.empty("✅ All healthy! Every item is above its reorder threshold and no batches expire within 14 days.")
+        T.empty("All inventory levels healthy. Every item is above its reorder threshold with no immediate expiry risk.")
         return
 
     f1, f2 = st.columns([1, 2])
@@ -174,7 +176,7 @@ def alerts():
         supply = a.on_hand / max(0.1, a.avg_daily)
         clean_rows.append({
             "SKU": a.sku,
-            "Priority": "🔴 High" if a.severity == "high" else ("🟡 Medium" if a.severity == "medium" else "⚪ Low"),
+            "Priority": "High" if a.severity == "high" else ("Medium" if a.severity == "medium" else "Low"),
             "Issue": "Low Stock" if a.kind == "low_stock" else ("Expiring Soon" if a.kind == "expiry" else "Stock & Expiry"),
             "On Hand": f"{int(a.on_hand)} units",
             "Reorder Point": f"{int(a.reorder_point)} units",
@@ -185,7 +187,7 @@ def alerts():
 
     st.write("")
     with st.container(border=True):
-        st.markdown("#### 🤖 Launch Multi-Agent Workflow for an Alert")
+        st.markdown("#### Automated Replenishment Orchestration")
         st.caption("Select an item below. Demand Forecaster and Supplier Agent will run in parallel to plan replenishment.")
         c1, c2 = st.columns([3, 1])
         sku = c1.selectbox("Choose item alert to run", [a.sku for a in al], format_func=lambda s: next(
@@ -193,11 +195,12 @@ def alerts():
             for a in al if a.sku == s))
         can = svc.can(state.user(), "run_case")
         c2.write("")
-        if c2.button("Run Agents 🚀", type="primary", disabled=not can, use_container_width=True):
+        if c2.button("Run Agents", icon=":material/play_arrow:", type="primary", disabled=not can,
+                     use_container_width=True):
             st.session_state["run_request"] = {"sku": sku, "fault": None}
             st.switch_page(PAGES["agent_run"])
         if not can:
-            st.caption("🔒 *Note: Only buyers, approvers, or admins can run purchasing cases.*")
+            st.caption("*Access Control: Only buyers, approvers, or administrators are authorized to initiate purchasing cases.*")
 
 
 # ------------------------------------------------------------------ Agent run view
@@ -348,13 +351,14 @@ def render_case_summary(case):
             st.warning(n)
     if case.status == "pending_approval":
         T.callout(
-            f"🎉 <b>AI Agents drafted PO #{case.po_id}!</b> It is now waiting at the human approval gate.<br>"
+            f"<b>Purchase Order #{case.po_id} Drafted Successfully:</b> Order is currently pending human authorization.<br>"
             "<i>Policy Rule: Buyers cannot self-approve. Approver (bob) must review and sign off.</i>",
             kind="success"
         )
         c_a, c_b = st.columns([1, 1])
         with c_a:
-            if st.button("👉 Switch to Bob & Open Approval Dashboard", type="primary", use_container_width=True):
+            if st.button("Switch to Bob & Open Approval Dashboard", icon=":material/person_check:", type="primary",
+                         use_container_width=True):
                 st.session_state["acting_user"] = "bob"
                 st.switch_page(PAGES["approvals"])
         with c_b:

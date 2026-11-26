@@ -84,7 +84,7 @@ def demo():
                 st.error("A buyer approved a PO - this must never happen.")
             except Exception:
                 T.callout(
-                    "🛡️ <b>Security Gate Verified:</b> Buyer 'alice' attempted unauthorized self-approval and "
+                    "<b>Security Gate Verified:</b> Buyer 'alice' attempted unauthorized self-approval and "
                     "was safely blocked by governance policy (only Approvers can authorize purchases).",
                     kind="info",
                 )
@@ -120,9 +120,9 @@ P = {
 }
 pages_ops.PAGES.update(P)
 nav = st.navigation({
-    "⭐ Start Here": [P["demo"], P["overview"]],
-    "📦 Purchasing Operations": [P["alerts"], P["agent_run"], P["approvals"]],
-    "🛡️ Governance & Intelligence": [P["ask"], P["audit"], P["benchmark"], P["settings"]],
+    "Getting Started": [P["demo"], P["overview"]],
+    "Purchasing Operations": [P["alerts"], P["agent_run"], P["approvals"]],
+    "Governance & Intelligence": [P["ask"], P["audit"], P["benchmark"], P["settings"]],
 })
 
 with st.sidebar:
@@ -139,34 +139,34 @@ with st.sidebar:
 
     # Quick role switcher button & explanation
     role_desc = {
-        "alice": "🛒 Buyer: Can run cases & draft POs (cannot self-approve).",
-        "bob": "✍️ Approver: Reviews & approves pending POs.",
-        "root": "⚙️ Admin: System settings & data reset.",
+        "alice": "Buyer: Authorized to initiate cases & draft POs (cannot self-approve).",
+        "bob": "Approver: Authorized to review, modify & approve pending POs.",
+        "root": "Administrator: System configuration & environment reset.",
     }
     st.caption(role_desc.get(user_name, f"Role: {users.get(user_name, 'user')}"))
 
     if user_name == "alice":
-        if st.button("Switch to Bob (Approver) ✍️", use_container_width=True):
+        if st.button("Switch to Bob (Approver)", icon=":material/person_check:", use_container_width=True):
             st.session_state["acting_user"] = "bob"
             st.rerun()
     elif user_name == "bob":
-        if st.button("Switch to Alice (Buyer) 🛒", use_container_width=True):
+        if st.button("Switch to Alice (Buyer)", icon=":material/shopping_cart:", use_container_width=True):
             st.session_state["acting_user"] = "alice"
             st.rerun()
 
     st.markdown(f'<div class="pa-mode">Mode: {T.esc(svc.env.llm.mode)}<br>ERP day {svc.env.today} - '
                 f'{T.esc(svc.env.meta("profile"))}</div>', unsafe_allow_html=True)
     st.write("")
-    if st.button("▶ Run guided demo", type="primary", use_container_width=True):
+    if st.button("Run Guided Demo", icon=":material/play_arrow:", type="primary", use_container_width=True):
         st.switch_page(P["demo"])
 
     st.markdown("---")
     st.markdown(
         "<div style='font-size:0.78rem; color:#A2B7BA; line-height:1.45;'>"
-        "<b>ProcureAgents Flow:</b><br>"
-        "1️⃣ <b>Overview/Alerts</b>: Detect risk<br>"
-        "2️⃣ <b>Agent Run</b>: AI plans quantity & vendor<br>"
-        "3️⃣ <b>Approvals</b>: Human manager authorizes"
+        "<b>ProcureAgents Workflow:</b><br>"
+        "1. <b>Overview & Alerts:</b> Detect stockout & expiry risks<br>"
+        "2. <b>Agent Orchestration:</b> Multi-agent planning & forecasting<br>"
+        "3. <b>Approval Gate:</b> Human-in-the-loop authorization"
         "</div>",
         unsafe_allow_html=True,
     )
