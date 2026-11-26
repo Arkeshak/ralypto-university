@@ -149,13 +149,16 @@ def _act(fn, ok_msg):
 
 def approvals():
     svc = state.svc()
-    T.header("Human approval gate", "Approval dashboard",
-             "Draft POs wait here at PENDING_APPROVAL. Only approver and admin roles can approve, edit or reject; "
-             "the check runs in the service layer and again in the gate, not in a prompt.")
+    T.header(
+        "Executive Authorization",
+        "Manager Approval Dashboard",
+        "Autonomous agent proposals require explicit human authorization before committing funds. "
+        "Strict maker-checker segregation prevents unauthorized buyer self-approvals."
+    )
 
     T.callout(
-        "<b>Human-in-the-Loop Governance:</b> AI agents recommend orders; human approvers authorize them.<br>"
-        "<b>Security Rule:</b> Buyers (alice) cannot self-approve. Only approvers (bob) or admins have authority.",
+        "**Corporate Governance Policy (Maker-Checker):** AI agents formulate purchase recommendations (Maker); "
+        "authorized Store Managers (Bob) hold executive sign-off authority (Checker). Buyers (Alice) cannot self-approve.",
         kind="info"
     )
 
@@ -171,11 +174,14 @@ def approvals():
                           use_container_width=True):
             st.session_state["acting_user"] = "bob"
             st.rerun()
-    tab1, tab2 = st.tabs(["Pending approval", "All purchase orders"])
+    tab1, tab2 = st.tabs(["Pending Executive Review", "All Purchase Orders (Ledger)"])
     with tab1:
         pend = svc.purchase_orders(state.user(), "PENDING_APPROVAL")
         if not pend:
-            T.empty("No purchase orders are waiting for approval. Run the agents on an alert to create one.")
+            T.empty(
+                "No purchase orders are currently awaiting approval. "
+                "Run the AI Planning workflow on an alert to formulate an order."
+            )
         page = pend[:15]
         if len(pend) > 15:
             st.caption(f"Showing 15 of {len(pend)} pending POs (newest first).")
@@ -184,7 +190,7 @@ def approvals():
     with tab2:
         allp = svc.purchase_orders(state.user())
         if not allp:
-            T.empty("No purchase orders yet.")
+            T.empty("No purchase orders recorded yet.")
         else:
             df = pd.DataFrame(allp)[["po_id", "status", "sku", "supplier", "qty", "unit_price", "total", "created_by",
                                      "approved_by"]]
@@ -202,9 +208,12 @@ EXAMPLES = ["Which items expire within 7 days?", "Which items are below the reor
 
 def ask():
     svc = state.svc()
-    T.header("Query Agent", "Ask the data",
-             "Plain-language questions become one read-only SELECT. Write requests, prompt injection and anything "
-             "outside the allow-listed tables are blocked by the intent screen, the SQL parser and the read-only role.")
+    T.header(
+        "Conversational Intelligence",
+        "Natural Language ERP Analytics",
+        "Query inventory levels, sales velocity, expiring batches, and supplier pricing in plain English. "
+        "Enforces strict read-only execution, schema allow-listing, and prompt-injection guardrails."
+    )
     st.caption(f"Mode: {svc.env.llm.mode}" + ("  - questions are translated by deterministic templates; unusual "
                                                "wording may be unanswerable." if not svc.env.llm.available else ""))
     hist = st.session_state.setdefault("chat", [])
@@ -239,7 +248,7 @@ def ask():
     if q:
         hist.append({"q": q, "r": svc.query(state.user(), q)})
     if not hist:
-        T.empty("Ask a question or click an example.")
+        T.empty("Ask a question or click an example above.")
     for turn in reversed(hist[-12:]):
         with st.chat_message("user"):
             st.write(turn["q"])
@@ -247,8 +256,8 @@ def ask():
         with st.chat_message("assistant"):
             if r["status"] == "blocked":
                 T.callout(
-                    f"<b>Guardrail Enforced:</b> Unsafe query blocked ({r.get('reason')}). "
-                    "Database is strictly read-only; no data was modified.",
+                    f"**Security Guardrail Enforced:** Unsafe query blocked ({r.get('reason')}). "
+                    "The database connection is strictly read-only; no data was modified.",
                     kind="tip"
                 )
                 if r.get("sql"):
@@ -272,18 +281,21 @@ def ask():
 # ------------------------------------------------------------------ Audit log
 def audit():
     svc = state.svc()
-    T.header("Observability", "Audit log",
-             "Append-only: database triggers reject every UPDATE and DELETE on this table. Each row records who or "
-             "what decided a step and the evidence.")
+    T.header(
+        "Enterprise Compliance",
+        "Immutable Audit Ledger",
+        "Every AI recommendation, policy gate verification, manager sign-off, and ERP modification "
+        "is permanently recorded in an append-only log protected by SQLite database triggers."
+    )
     rows = svc.audit(state.user())
     if not rows:
         T.empty("The audit log is empty. It fills as soon as an agent drafts a PO or a request is denied.")
         return
     df = pd.DataFrame(rows)
     c1, c2, c3 = st.columns(3)
-    actor = c1.selectbox("Actor", ["(all)"] + sorted(df["actor"].unique()))
-    action = c2.text_input("Action contains", placeholder="e.g. APPROVED, DENIED, EDIT")
-    po = c3.text_input("PO id", placeholder="e.g. 3")
+    actor = c1.selectbox("Filter by Actor / Role", ["(all)"] + sorted(df["actor"].unique()))
+    action = c2.text_input("Filter by Action Code", placeholder="e.g. APPROVED, DENIED, EDIT")
+    po = c3.text_input("Filter by PO ID", placeholder="e.g. 3")
     if actor != "(all)":
         df = df[df["actor"] == actor]
     if action:
@@ -292,9 +304,10 @@ def audit():
         df = df[df["po_id"] == int(po)]
     df = df.assign(detail=df["detail"].map(lambda d: json.dumps(json.loads(d)) if d else ""))
     m1, m2, m3 = st.columns(3)
-    m1.metric("Rows shown", len(df))
-    m2.metric("Denied requests", df["action"].str.startswith("DENIED").sum())
-    m3.metric("Human decisions", df["action"].isin(["PENDING_APPROVAL->APPROVED", "PENDING_APPROVAL->REJECTED"]).sum())
+    m1.metric("Audit Records Logged", len(df))
+    m2.metric("Unauthorized Attempts Blocked", int(df["action"].str.startswith("DENIED").sum()))
+    approvals_count = int(df["action"].isin(["PENDING_APPROVAL->APPROVED", "PENDING_APPROVAL->REJECTED"]).sum())
+    m3.metric("Executive Approvals Recorded", approvals_count)
     st.dataframe(df.sort_values("id", ascending=False), hide_index=True, use_container_width=True, height=480)
     st.download_button("Export to CSV", df.to_csv(index=False).encode("utf-8"), "audit_log.csv", "text/csv",
                        icon=":material/download:")
