@@ -95,7 +95,8 @@ def score_orders(base_db: str, orders: Dict[str, tuple]) -> Dict:
         case.po_id = gate.submit(case, f"{case.task_id}-{sku}")
         case.status = "pending_approval"
         return case
-    decide.llm, decide.lgbm = LLM(provider="offline"), False
+    setattr(decide, "llm", LLM(provider="offline"))
+    setattr(decide, "lgbm", False)
     res = replay(world, path, decide, days=21, review_every=21, skus=skus, single_round=True)
     acc = statistics.mean(po_accurate(refs[s], (orders[s][0], orders[s][1]) if s in orders and s not in rejected
                                       else None) for s in skus)
@@ -147,7 +148,7 @@ def run_human_study_cli(volunteer_name: str = "volunteer_1", results_dir: Option
         if sid and qty > 0:
             orders[s["sku"]] = (sid, qty)
     scores = score_orders(db, orders)
-    result = {"system": "C. Human purchasers", "volunteer": volunteer_name, "synthetic": bool(auto),
+    result = {"system": "C. Human purchasers", "volunteer": volunteer_name, "synthetic": auto,
               "date": time.strftime("%Y-%m-%d %H:%M:%S"), "study_seed": STUDY_SEED, "n_scenarios": len(scenarios),
               "orders": {k: list(v) for k, v in orders.items()},
               "task_times_s": [round(t, 2) for t in times],

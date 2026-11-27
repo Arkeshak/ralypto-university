@@ -121,8 +121,12 @@ def test_llm_text_with_wrong_numbers_is_discarded_and_logged(env_gate):
             return "Order 99999 units now."
     env.llm = LyingLLM()
     sku = alert_sku(w, env)
-    d = A.po_drafter(env, A.stock_monitor(env, sku), A.forecaster(env, sku), A.supplier_ranker(env, sku))
-    assert d.qty != 99999 and "99999" not in d.rationale and d.discrepancies
+    mon = A.stock_monitor(env, sku)
+    assert mon is not None
+    fc = A.forecaster(env, sku)
+    rk = A.supplier_ranker(env, sku)
+    d = A.po_drafter(env, mon, fc, rk)
+    assert d is not None and d.qty != 99999 and "99999" not in d.rationale and d.discrepancies
 
 
 # ---------------------------------------------------------------- fallback and faults
@@ -164,7 +168,8 @@ def test_complete_json_bounded_repair():
         def complete(self, system, prompt, max_tokens=400):
             return next(replies)
     llm = Flaky()
-    assert llm.complete_json("s", "p", P, max_repairs=2).x == 3 and llm.repairs == 2
+    res = llm.complete_json("s", "p", P, max_repairs=2)
+    assert res is not None and getattr(res, "x", None) == 3 and llm.repairs == 2
     replies = iter(["bad"] * 5)
     assert Flaky().complete_json("s", "p", P, max_repairs=1) is None
 
@@ -195,7 +200,7 @@ def test_interactive_interrupt_and_resume(tmp_path):
     generate(p, 6, 20)
     s = ProcureService(p)
     c = s.run_case("alice", s.alerts("alice")[0].sku)
-    assert c.status == "pending_approval"
+    assert c.status == "pending_approval" and c.po_id is not None
     s.approve("bob", c.po_id)
     assert s.cases[c.task_id].status == "created" and s.cases[c.task_id].trace[-1].author == "human_approver"
     s.close()
@@ -209,7 +214,7 @@ def test_extension_agent_can_veto(env_gate):
         passed=d.supplier_id != 1, failures=[] if d.supplier_id != 1 else [Failure(code="POLICY", message="banned")]))
     for s in [x for x in w.truth if A.stock_monitor(env, x)][:8]:
         c = run_case(env, gate, Tracer(None), s, registry=reg)
-        if c.status == "pending_approval":
+        if c.status == "pending_approval" and c.draft is not None:
             assert c.draft.supplier_id != 1
     assert any("extension" in k for k in reg.list_agents())
 
@@ -234,7 +239,9 @@ def test_lightgbm_trains_and_beats_naive(tmp_path):
         if len(hh) < 90:
             continue
         a += [h.get(d, 0) for d in range(cut, env.today)]
-        f_l += m.predict(hh, env.all_promos().get(s, set()))[0]
+        pred = m.predict(hh, env.all_promos().get(s, set()))
+        if pred:
+            f_l += pred[0]
         f_n += F.naive(hh, cut)
     assert F.wape(a, f_l) < F.wape(a, f_n)
     assert A.forecaster(env, next(iter(H))).method.startswith("LightGBM")

@@ -75,11 +75,12 @@ def replay(world: World, db_path: str, decide: Callable, days: int = 90, review_
                 if c.status == "pending_approval" and c.po_id:
                     gate.decide(c.po_id, APPROVER, True, idem_key=f"approve-{c.po_id}")
                     po = gate.po(c.po_id)
-                    rel_lead = db.execute("SELECT s.reliability, p.lead_time_days FROM prices p JOIN suppliers s ON "
-                                          "s.id=p.supplier_id WHERE p.sku=? AND p.supplier_id=?",
-                                          (s, po["supplier_id"])).fetchone()
-                    arrive = day + world.delay(po["supplier_id"], s, rel_lead[0], rel_lead[1], salt=d)
-                    pipeline.append((arrive, s, po["qty"], c.po_id))
+                    if po is not None:
+                        rel_lead = db.execute("SELECT s.reliability, p.lead_time_days FROM prices p JOIN suppliers s ON "
+                                              "s.id=p.supplier_id WHERE p.sku=? AND p.supplier_id=?",
+                                              (s, po["supplier_id"])).fetchone()
+                        arrive = day + world.delay(po["supplier_id"], s, rel_lead[0], rel_lead[1], salt=d)
+                        pipeline.append((arrive, s, po["qty"], c.po_id))
             env.close()
         for item in [p for p in pipeline if p[0] == day]:
             _, s, q, po_id = item
@@ -170,6 +171,6 @@ def make_decider(system: str, llm: LLM, tracer: Tracer, requester: str = "alice"
         if system == "single_agent":
             return single_agent(env, gate, tracer, sku, requester=requester, inject_fault=inject_fault)
         return rule_based(env, gate, sku, requester=requester, tracer=tracer)
-    decide.llm = llm
-    decide.lgbm = system != "rule_based"  # D uses no forecast model (its validator sanity bound uses SES)
+    setattr(decide, "llm", llm)
+    setattr(decide, "lgbm", system != "rule_based")  # D uses no forecast model (its validator sanity bound uses SES)
     return decide

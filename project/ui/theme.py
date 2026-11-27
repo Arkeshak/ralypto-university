@@ -353,6 +353,69 @@ div[data-testid="stMetric"] {{
   padding: 14px 18px;
   box-shadow: 0 1px 3px 0 rgba(0,0,0,0.02);
 }}
+.pa-product-card {{
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 14px;
+  padding: 18px 20px;
+  margin-bottom: 14px;
+  box-shadow: 0 1px 3px 0 rgba(0,0,0,0.04);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}}
+.pa-product-card:hover {{
+  border-color: #CBD5E1;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}}
+.pa-badge {{
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.3;
+}}
+.pa-badge.critical {{
+  background: #FEF2F2;
+  color: #DC2626;
+  border: 1px solid #FCA5A5;
+}}
+.pa-badge.low {{
+  background: #FFFBEB;
+  color: #D97706;
+  border: 1px solid #FDE68A;
+}}
+.pa-badge.healthy {{
+  background: #F0FDF4;
+  color: #16A34A;
+  border: 1px solid #BBF7D0;
+}}
+.pa-badge.expiry {{
+  background: #FFF7ED;
+  color: #EA580C;
+  border: 1px solid #FFEDD5;
+}}
+.pa-stat-box {{
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  padding: 10px 14px;
+  text-align: center;
+}}
+.pa-stat-box .label {{
+  font-size: 0.72rem;
+  color: #64748B;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}}
+.pa-stat-box .val {{
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #0F172A;
+  margin-top: 2px;
+}}
 .stTabs [data-baseweb="tab-list"] {{
   gap: 8px;
   border-bottom: 2px solid {BORDER};

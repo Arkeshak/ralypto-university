@@ -45,6 +45,7 @@ def test_case_ends_pending_and_only_approver_can_create(world):
 def test_validator_vetoes_bad_moq_and_price(world):
     w, env, gate = world
     c = run_case(env, gate, Tracer(None), first_alert(w, env))
+    assert c.draft is not None and c.forecast is not None
     bad = c.draft.model_copy(update={"qty": 0, "unit_price": 0.01})
     v = A.validator(env, bad, c.forecast, "alice")
     assert not v.passed and {"PRICE", "SANITY"} <= {f.code for f in v.failures}
@@ -103,7 +104,7 @@ def test_plug_in_registry(world):
 def test_runner_up_trade_off_in_po(world):
     w, env, gate = world
     c = run_case(env, gate, Tracer(None), first_alert(w, env))
-    if c.draft and len(c.ranking.options) > 1:
+    if c.draft and c.ranking and len(c.ranking.options) > 1:
         assert "Runner-up" in c.draft.rationale
 
 

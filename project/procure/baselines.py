@@ -65,8 +65,9 @@ def _tool(env: A.Env, sku: str, name: str) -> Any:
         return {"options": [o.model_dump() | {"note": notes.get(o.supplier_id, "")} for o in rk.options],
                 "excluded": rk.excluded}
     if name == "stock":
-        return {"usable_stock": round(A._usable_stock(env, sku, A.stock_monitor(env, sku).avg_daily
-                                                      if A.stock_monitor(env, sku) else 0.0), 1),
+        mon = A.stock_monitor(env, sku)
+        avg_d = mon.avg_daily if mon else 0.0
+        return {"usable_stock": round(A._usable_stock(env, sku, avg_d), 1),
                 "on_order": A._incoming(env, sku), "budget_remaining": round(env.budget_cap - env.committed_spend(), 2),
                 "review_days": env.profile["review"], "z": env.profile["z"]}
     return {"error": f"unknown tool {name}"}
@@ -140,7 +141,10 @@ def single_agent(env: A.Env, gate: Gate, tracer: Tracer, sku: str, requester: st
             case.alert = A.stock_monitor(env, sku)
             return finish("no_action")
         try:
-            sid, qty = int(fin.get("supplier_id")), int(fin.get("qty"))
+            raw_sid, raw_qty = fin.get("supplier_id"), fin.get("qty")
+            if raw_sid is None or raw_qty is None:
+                raise ValueError("missing keys")
+            sid, qty = int(raw_sid), int(raw_qty)
         except (TypeError, ValueError):
             transcript += "\nfinal must contain integer supplier_id and qty."
             continue

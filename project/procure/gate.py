@@ -112,7 +112,7 @@ class Gate:
             self._move(po_id, "VALIDATED", "validator",
                        {"warnings": case.validation.warnings, "passes": len(case.validations) or 1})
             self._move(po_id, "PENDING_APPROVAL", "gate", {"review_flag": case.review_flag})
-        return po_id
+        return po_id or 0
 
     def decide(self, po_id: int, user: str, approve: bool, idem_key: str = "", reason: str = "") -> str:
         """Approver decision. Approve = PENDING_APPROVAL -> APPROVED -> CREATED; reject = -> REJECTED."""
@@ -128,7 +128,7 @@ class Gate:
                 self._move(po_id, "CREATED", user, {"note": "PO created in ERP"})
             else:
                 self._move(po_id, "REJECTED", user, {"reason": reason})
-            result = self.status(po_id)
+            result = self.status(po_id) or ""
             self._remember(idem_key, po_id, result)
         return result
 

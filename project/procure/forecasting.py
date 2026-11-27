@@ -189,7 +189,7 @@ class LGBMForecaster:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             out = self.model.predict(rows)
-        return [max(0.0, float(v) * m28) for v in out], None
+        return [max(0.0, float(v) * m28) for v in np.asarray(out).ravel()], None
 
 
 _cache: dict = {}

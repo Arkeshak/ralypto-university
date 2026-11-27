@@ -27,7 +27,7 @@ import tempfile
 import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Any, Optional
 
 from . import agents as A
 from . import forecasting as F
@@ -157,7 +157,7 @@ def run_one(system: str, sc: Scenario, rep: int, seed: int, profile: str, n_skus
     tracer = Tracer(os.path.join(trace_dir, f"{system}_{sc.id}_r{rep}.jsonl") if trace_dir else None)
     decide = make_decider(system, llm, tracer, sc.requester, sc.inject_fault)
     budget = gen.get("budget_cap", 250000.0)
-    out = {"system": system, "scenario": sc.id, "group": sc.group, "repeat": rep, "data_seed": data_seed}
+    out: dict[str, Any] = {"system": system, "scenario": sc.id, "group": sc.group, "repeat": rep, "data_seed": data_seed}
 
     # PO accuracy / override: first-round decisions vs the oracle reference on the untouched database
     env0 = A.Env(base, LLM())
@@ -316,7 +316,7 @@ def query_questions(env: A.Env):
     skus = [r[0] for r in env.db.execute("SELECT sku FROM items ORDER BY sku LIMIT 12")]
     cats = [r[0] for r in env.db.execute("SELECT DISTINCT lower(category) FROM items ORDER BY 1")]
     t = env.today
-    qs = []
+    qs: list[tuple[str, str | None, str]] = []
     for s in skus[:5]:
         qs.append((f"How much stock of {s} do we have?", f"SELECT on_hand FROM stock WHERE sku='{s}'", "lookup"))
     for s in skus[:4]:
@@ -476,7 +476,7 @@ def load_human_results(root: str) -> dict:
 def human_subset_eval(base_llm: LLM, systems: list, human: dict, work: str) -> dict:
     """Run A/B/D on exactly the human-study scenarios (seed 42, 10 SKUs, single decision, 21-day replay)."""
     from .human_study import STUDY_PROFILE, STUDY_SEED, STUDY_SKUS, get_study_scenarios, score_orders
-    out = {}
+    out: dict[str, Any] = {}
     base = os.path.join(work, "human_subset.db")
     generate(base, STUDY_SEED, STUDY_SKUS, STUDY_PROFILE)
     skus = [s["sku"] for s in get_study_scenarios(base)]
@@ -485,7 +485,7 @@ def human_subset_eval(base_llm: LLM, systems: list, human: dict, work: str) -> d
         shutil.copy(base, path)
         llm = base_llm.fork()
         decide = make_decider(system, llm, Tracer(None))
-        env, gate = A.Env(path, llm, use_lgbm=decide.lgbm), Gate(path)
+        env, gate = A.Env(path, llm, use_lgbm=getattr(decide, "lgbm", False)), Gate(path)
         orders, times = {}, []
         for s in skus:
             t0 = time.perf_counter()

@@ -1,7 +1,5 @@
-"""Operational pages: Overview, Alerts and cases, Agent run view."""
+"""Operational pages: Overview, Inventory Catalog, Alerts, and Purchasing Assistant."""
 from __future__ import annotations
-
-import json
 
 import altair as alt
 import pandas as pd
@@ -9,21 +7,29 @@ import streamlit as st
 
 from procure.models import CaseFile
 
-from . import state
+from . import products, state
 from . import theme as T
 
 AGENT_LABEL = {
-    "stock_monitor": "Stock Monitor Agent (Risk Detection)",
-    "forecaster": "Demand Forecaster Agent (LightGBM ML)",
-    "supplier": "Supplier Intelligence Agent (Quote Comparison)",
-    "po_agent": "Purchase Order Agent (Order Formulation)",
-    "validator": "Policy Validator Agent (Compliance Verification)",
-    "gate": "Safe-Action Gate (Governance & RBAC)",
-    "human_approver": "Executive Manager (Human Sign-Off)",
-    "orchestrator": "Workflow Orchestrator (LangGraph)",
+    "stock_monitor": "Stock Checker (Shortage & Expiry Detection)",
+    "forecaster": "Demand Prediction (LightGBM Machine Learning)",
+    "supplier": "Supplier Comparison (Best Quote & Reliability)",
+    "po_agent": "Purchase Order Planner (Order Formulation)",
+    "validator": "Order Safety Check (Budget & Policy Compliance)",
+    "gate": "Safe-Action Gate (Manager Approval Required)",
+    "human_approver": "Store Manager (Executive Sign-Off)",
+    "orchestrator": "Procurement Orchestrator",
 }
-AGENT_TONE = {"stock_monitor": "primary", "forecaster": "primary", "supplier": "primary", "po_agent": "primary",
-              "validator": "warn", "gate": "good", "orchestrator": "muted", "human_approver": "good"}
+AGENT_TONE = {
+    "stock_monitor": "primary",
+    "forecaster": "primary",
+    "supplier": "primary",
+    "po_agent": "primary",
+    "validator": "good",
+    "gate": "good",
+    "orchestrator": "muted",
+    "human_approver": "good",
+}
 
 
 # ------------------------------------------------------------------ data helpers
@@ -40,187 +46,451 @@ def inventory_frame(svc) -> pd.DataFrame:
     df["cover_days"] = (df["on_hand"] / df["avg_daily"].where(df["avg_daily"] > 0)).fillna(999).round(1)
     df["below_reorder"] = df["on_hand"] <= df["reorder_point"]
     df["stockout_risk"] = df["cover_days"] < df["min_lead_days"]
+    df["total_value"] = df["on_hand"] * df["unit_cost"]
     return df
 
 
 def expiry_frame(svc, window: int = 30) -> pd.DataFrame:
     db, today = svc.env.db, svc.env.today
-    rows = db.execute("SELECT b.sku, b.qty, b.expiry_day, i.unit_cost FROM batches b JOIN items i USING(sku) WHERE "
-                      "b.expiry_day IS NOT NULL AND b.qty>0 AND b.expiry_day<=?", (today + window,)).fetchall()
-    df = pd.DataFrame([dict(r) for r in rows], columns=["sku", "qty", "expiry_day", "unit_cost"])
+    rows = db.execute("SELECT b.sku, b.qty, b.expiry_day, i.name, i.category, i.unit_cost FROM batches b "
+                      "JOIN items i USING(sku) WHERE b.expiry_day IS NOT NULL AND b.qty>0 AND b.expiry_day<=? "
+                      "ORDER BY b.expiry_day", (today + window,)).fetchall()
+    df = pd.DataFrame([dict(r) for r in rows])
+    if df.empty:
+        return pd.DataFrame(columns=["sku", "qty", "expiry_day", "name", "category", "unit_cost", "days_to_expiry", "value"])
     df["days_to_expiry"] = df["expiry_day"] - today
     df["value"] = df["qty"] * df["unit_cost"]
     return df
 
 
-# ------------------------------------------------------------------ Overview
+# ------------------------------------------------------------------ Overview / Main Dashboard
 def overview():
     svc = state.svc()
-    T.header("Operations", "Overview",
-             f"Live supply chain health for profile '{svc.env.meta('profile')}' (ERP Day {svc.env.today}). "
-             "All metrics are computed in real time from the inventory database.")
-
-    T.flow_banner(
-        "Autonomous Procurement with Human Governance",
-        "ProcureAgents continuously detects inventory shortfalls, forecasts future demand with ML, selects the best supplier, "
-        "and prepares purchase orders for manager approval.",
-        [
-            ("1", "Detect Shortfall", "Stock Monitor identifies items below reorder points or batches nearing expiry."),
-            ("2", "AI Agents Plan", "Demand Forecaster (LightGBM) & Supplier Agent run in parallel to plan order & vendor."),
-            ("3", "Human Approves", "Validator checks budget & policy rules; manager (Bob) authorizes purchase.")
-        ]
+    prof_name = str(svc.env.meta("profile") or "supermarket").title()
+    T.header(
+        "Store Management",
+        "Executive Dashboard",
+        f"Real-time inventory health, critical reorder items, and purchasing actions for **{prof_name}** (Day {svc.env.today})."
     )
-
-    col1, col2 = st.columns([1, 1])
-    with col1:
-        if st.button("Launch Guided Demonstration", icon=":material/play_arrow:", type="primary",
-                     use_container_width=True):
-            st.switch_page(PAGES["demo"])
-    with col2:
-        if st.button("Browse Active Inventory Alerts", icon=":material/notifications:", use_container_width=True):
-            st.switch_page(PAGES["alerts"])
-    st.write("")
 
     inv = inventory_frame(svc)
     exp = expiry_frame(svc, 14)
     open_pos = svc.purchase_orders(state.user(), "PENDING_APPROVAL")
+    total_inv_val = inv["total_value"].sum()
+    low_stock_count = int(inv["below_reorder"].sum())
+    exp_val = float(exp["value"].sum()) if not exp.empty else 0.0
 
+    # 6 Key Business Metrics answering the store owner's top questions
     c = st.columns(4)
     with c[0]:
-        T.kpi("Items Below Reorder", int(inv["below_reorder"].sum()),
-              f"{int(inv['below_reorder'].sum())} of {len(inv)} items need restocking",
-              "warn" if inv["below_reorder"].any() else "good")
+        T.kpi("Inventory Value", f"${total_inv_val:,.2f}", f"{len(inv)} total active products", "primary")
     with c[1]:
-        T.kpi("Immediate Stockout Risk", int(inv["stockout_risk"].sum()),
-              "Stock cover is less than vendor lead time",
-              "bad" if inv["stockout_risk"].any() else "good")
+        tone = "bad" if low_stock_count > 0 else "good"
+        T.kpi("Products Running Low", low_stock_count, "Below safety reorder threshold", tone)
     with c[2]:
-        T.kpi("Expiring Stock (14d)", T.money(float(exp["value"].sum()) if len(exp) else 0.0),
-              f"{len(exp)} batches at risk of write-off",
-              "bad" if len(exp) else "good")
+        tone = "bad" if exp_val > 0 else "good"
+        T.kpi("Expiring Stock (14d)", f"${exp_val:,.2f}", f"{len(exp)} batches at risk of spoilage", tone)
     with c[3]:
-        T.kpi("POs Awaiting Approval", len(open_pos),
-              "Orders drafted by AI waiting for human sign-off",
-              "primary" if len(open_pos) else "good")
+        n_pos = len(open_pos)
+        tone = "warn" if n_pos > 0 else "good"
+        T.kpi("Awaiting Manager Sign-Off", f"{n_pos} Order{'s' if n_pos != 1 else ''}",
+              "Pending executive authorization", tone)
 
     st.write("")
 
-    # Urgent Restock Items
+    # Actionable Top Banners
+    b1, b2 = st.columns([1, 1])
+    with b1:
+        if st.button("Browse Full Product Inventory", icon=":material/inventory_2:", use_container_width=True):
+            st.switch_page(PAGES["inventory"])
+    with b2:
+        if st.button("Open Manager Approval Desk", icon=":material/fact_check:", type="primary", use_container_width=True):
+            st.switch_page(PAGES["approvals"])
+
+    st.write("")
+
+    # Urgent Restock Items with full product photography and 1-click reorder
     urgent = inv[inv["stockout_risk"] | inv["below_reorder"]].copy()
-    if not urgent.empty:
-        st.markdown("### Critical Items Requiring Replenishment")
-        st.caption("These products are running dangerously low. Click 'Initiate Purchase' to automatically plan replenishment.")
-        urg_show = urgent.sort_values("cover_days").head(4)
+    st.markdown("### Critical Products Requiring Immediate Restock")
+    st.caption("These items have fallen below safety stock or have less cover than supplier delivery lead time.")
+
+    if urgent.empty:
+        st.success("All inventory levels are healthy! No products currently require emergency replenishment.",
+                   icon=":material/check_circle:")
+    else:
+        urg_show = urgent.sort_values("cover_days").head(5)
         for _, row in urg_show.iterrows():
             with st.container(border=True):
-                uc1, uc2, uc3, uc4 = st.columns([3, 2, 2, 2])
-                with uc1:
-                    st.markdown(f"**{row['name']}** (`{row['sku']}`)")
-                    st.caption(f"Category: {row['category']} • Cost: ${row['unit_cost']:.2f}")
-                with uc2:
-                    st.metric("Stock on Hand", f"{int(row['on_hand'])} units", f"Reorder at {int(row['reorder_point'])}")
-                with uc3:
-                    st.metric("Supply Remaining", f"{row['cover_days']:.1f} days", f"Lead time: {int(row['min_lead_days'])}d",
+                r1, r2, r3, r4 = st.columns([4, 2, 2, 2])
+                with r1:
+                    st.markdown(products.product_cell_html(
+                        row["sku"], row["name"], row["category"],
+                        subtext=f"Product Code: {row['sku']} • Cost: ${row['unit_cost']:.2f} / unit",
+                        size=48
+                    ), unsafe_allow_html=True)
+                with r2:
+                    st.metric("Stock on Hand", f"{int(row['on_hand'])} units", f"Safety Point: {int(row['reorder_point'])}")
+                with r3:
+                    st.metric("Stock Cover", f"{row['cover_days']:.1f} days", f"Lead time: {int(row['min_lead_days'])}d",
                               delta_color="inverse")
-                with uc4:
+                with r4:
                     st.write("")
-                    if st.button("Initiate Purchase", icon=":material/auto_mode:", key=f"ov_run_{row['sku']}",
+                    if st.button("Order Restock", icon=":material/shopping_cart:", key=f"ov_urg_{row['sku']}",
                                  type="primary", use_container_width=True):
                         st.session_state["run_request"] = {"sku": row["sku"], "fault": None}
                         st.switch_page(PAGES["agent_run"])
 
+    st.write("")
+
+    # Expiry clearance queue
+    if not exp.empty:
+        st.markdown("### Perishable Batches Nearing Expiry (Action Required)")
+        st.caption("Discounting these items now liquidates stock before expiration and prevents total inventory write-off.")
+        exp_show = exp.head(4)
+        for _, erow in exp_show.iterrows():
+            with st.container(border=True):
+                e1, e2, e3, e4 = st.columns([4, 2, 2, 2])
+                with e1:
+                    st.markdown(products.product_cell_html(
+                        erow["sku"], erow["name"], erow["category"],
+                        subtext=f"Batch expires in {int(erow['days_to_expiry'])} days (Day {int(erow['expiry_day'])})",
+                        size=48
+                    ), unsafe_allow_html=True)
+                with e2:
+                    st.metric("Expiring Quantity", f"{int(erow['qty'])} units")
+                with e3:
+                    st.metric("Value at Risk", f"${erow['value']:,.2f}", delta="-100% loss if expired", delta_color="inverse")
+                with e4:
+                    st.write("")
+                    if st.button("Review Clearance", icon=":material/sell:", key=f"ov_exp_{erow['sku']}",
+                                 use_container_width=True):
+                        st.session_state["run_request"] = {"sku": erow["sku"], "fault": None}
+                        st.switch_page(PAGES["agent_run"])
+
     st.markdown("---")
-    st.markdown("### Inventory Analytics & Diagnostics")
-    tab_stock, tab_exp = st.tabs(["Stock vs. Reorder Buffers", "30-Day Expiry Schedule"])
-    with tab_stock:
-        show = inv.assign(ratio=inv["on_hand"] / inv["reorder_point"].clip(lower=1)).sort_values("ratio").head(20)
-        if show.empty:
-            T.empty("No items.")
-        else:
-            base = alt.Chart(show).encode(y=alt.Y("sku:N", sort=list(show["sku"]), title=None))
-            bars = base.mark_bar(color=T.PRIMARY, size=14).encode(
-                x=alt.X("on_hand:Q", title="Units on hand"),
+    st.markdown("### Inventory Diagnostics & Trends")
+    t1, t2 = st.tabs(["Stock vs Safety Buffers", "30-Day Expiry Schedule"])
+    with t1:
+        show = inv.assign(ratio=inv["on_hand"] / inv["reorder_point"].clip(lower=1)).sort_values("ratio").head(15)
+        if not show.empty:
+            base = alt.Chart(show).encode(y=alt.Y("name:N", sort=list(show["name"]), title=None))
+            bars = base.mark_bar(size=14).encode(
+                x=alt.X("on_hand:Q", title="Units on Hand"),
                 color=alt.condition("datum.below_reorder", alt.value(T.AMBER), alt.value(T.PRIMARY)),
-                tooltip=["sku", "name", "on_hand", "reorder_point", "cover_days"])
+                tooltip=["name", "sku", "on_hand", "reorder_point", "cover_days"]
+            )
             ticks = base.mark_tick(color=T.RED, thickness=3, size=18).encode(x="reorder_point:Q")
-            st.altair_chart((bars + ticks).properties(height=380), use_container_width=True)
-            st.caption("Amber bar = stock is below reorder threshold. Red tick = minimum reorder point.")
-    with tab_exp:
+            st.altair_chart((bars + ticks).properties(height=340), use_container_width=True)
+            st.caption("Amber bar = stock is below safety reorder threshold. Red tick = minimum reorder point.")
+    with t2:
         ex30 = expiry_frame(svc, 30)
         if ex30.empty:
-            T.empty("No batches expire in the next 30 days.")
+            T.empty("No products expire in the next 30 days.")
         else:
             agg = ex30.groupby("days_to_expiry", as_index=False).agg(value=("value", "sum"), batches=("sku", "count"))
             ch = alt.Chart(agg).mark_bar(color=T.AMBER).encode(
-                x=alt.X("days_to_expiry:O", title="Days to expiry"),
-                y=alt.Y("value:Q", title="Value at cost ($)"),
+                x=alt.X("days_to_expiry:O", title="Days Remaining to Expiry"),
+                y=alt.Y("value:Q", title="At-Risk Stock Value ($)"),
                 color=alt.condition(alt.datum.days_to_expiry <= 7, alt.value(T.RED), alt.value(T.AMBER)),
-                tooltip=["days_to_expiry", "value", "batches"])
-            st.altair_chart(ch.properties(height=380), use_container_width=True)
-            st.caption("Red bars expire within 7 days. Mark down or discount soon to prevent write-off loss.")
+                tooltip=["days_to_expiry", "value", "batches"]
+            )
+            st.altair_chart(ch.properties(height=340), use_container_width=True)
+            st.caption("Red bars expire within 7 days. Discount immediately to recover capital.")
 
 
-# ------------------------------------------------------------------ Alerts and cases
+# ------------------------------------------------------------------ Product Inventory Catalog
+def inventory():
+    svc = state.svc()
+    T.header(
+        "Product Management",
+        "Inventory Catalog",
+        "Browse all store products, monitor current stock levels, check days of supply, and initiate purchases."
+    )
+    inv = inventory_frame(svc)
+
+    f1, f2, f3 = st.columns([3, 2, 2])
+    search = f1.text_input("Search products", placeholder="Type product name or code...")
+    categories = ["All Categories"] + sorted(inv["category"].unique())
+    cat_filter = f2.selectbox("Filter by Category", categories)
+    status_filter = f3.selectbox("Stock Status", ["All Products", "Low Stock (< Safety Threshold)", "Healthy Stock"])
+
+    df = inv.copy()
+    if search:
+        df = df[df["name"].str.contains(search, case=False) | df["sku"].str.contains(search, case=False)]
+    if cat_filter != "All Categories":
+        df = df[df["category"] == cat_filter]
+    if status_filter == "Low Stock (< Safety Threshold)":
+        df = df[df["below_reorder"]]
+    elif status_filter == "Healthy Stock":
+        df = df[~df["below_reorder"]]
+
+    st.caption(f"Showing **{len(df)}** products matching filters.")
+
+    for _, row in df.iterrows():
+        with st.container(border=True):
+            c1, c2, c3, c4 = st.columns([4, 2, 2, 2])
+            with c1:
+                st.markdown(products.product_cell_html(
+                    row["sku"], row["name"], row["category"],
+                    subtext=f"Product Code: {row['sku']} • Unit Cost: ${row['unit_cost']:.2f}",
+                    size=46
+                ), unsafe_allow_html=True)
+            with c2:
+                st.metric("Stock on Hand", f"{int(row['on_hand'])} units", f"Safety: {int(row['reorder_point'])}")
+            with c3:
+                color = "inverse" if row["stockout_risk"] else "normal"
+                st.metric("Days of Supply", f"{row['cover_days']:.1f} days", f"Daily sales: {row['avg_daily']:.1f}",
+                          delta_color=color)
+            with c4:
+                st.write("")
+                if st.button("Order Restock", icon=":material/add_shopping_cart:", key=f"inv_ord_{row['sku']}",
+                             type="primary" if row["below_reorder"] else "secondary", use_container_width=True):
+                    st.session_state["run_request"] = {"sku": row["sku"], "fault": None}
+                    st.switch_page(PAGES["agent_run"])
+
+
+# ------------------------------------------------------------------ Alerts and Cases
 def alerts():
     svc = state.svc()
-    T.header("Stock Monitor", "Alerts and Cases",
-             "Inventory alerts raised automatically by the Stock Monitor agent based on real-time stock levels, "
-             "reorder thresholds, and batch expiry dates.")
+    T.header(
+        "Stock Alerts",
+        "Shortage & Expiry Warnings",
+        "Actionable alerts generated automatically based on live inventory buffers, sales velocity, and batch expiration dates."
+    )
 
     al = svc.alerts(state.user())
     if not al:
-        T.empty("All inventory levels healthy. Every item is above its reorder threshold with no immediate expiry risk.")
+        st.success("All inventory levels are healthy! No products currently require reordering.", icon=":material/check_circle:")
         return
 
-    f1, f2 = st.columns([1, 2])
-    sev = f1.multiselect("Priority Filter", ["high", "medium", "low"], default=["high", "medium", "low"])
-    kinds = f2.multiselect("Condition Filter", ["low_stock", "expiry", "both"], default=["low_stock", "expiry", "both"])
-    al = [a for a in al if a.severity in sev and a.kind in kinds]
+    # Two clear business tabs
+    t1, t2 = st.tabs(["Low Stock Alerts (Needs Restocking)", "Expiry Alerts (Put on Sale)"])
+    with t1:
+        stock_alerts = [a for a in al if a.kind in ("stockout", "both")]
+        if not stock_alerts:
+            st.success("No stockout risks detected. Every product has adequate coverage.", icon=":material/check_circle:")
+        else:
+            for a in stock_alerts:
+                supply = a.on_hand / max(0.1, a.avg_daily)
+                with st.container(border=True):
+                    a1, a2, a3, a4 = st.columns([4, 2, 2, 2])
+                    with a1:
+                        st.markdown(products.product_cell_html(
+                            a.sku,
+                            subtext=f"Product Code: {a.sku} • Priority: {a.severity.title()}",
+                            size=46
+                        ), unsafe_allow_html=True)
+                    with a2:
+                        st.metric("On Hand", f"{int(a.on_hand)} units", f"Safety Point: {int(a.reorder_point)}")
+                    with a3:
+                        st.metric("Remaining Supply", f"{supply:.1f} days", f"Daily sales: {a.avg_daily:.1f}")
+                    with a4:
+                        st.write("")
+                        if st.button("Plan Reorder with AI", icon=":material/auto_mode:", key=f"alt_btn_{a.sku}",
+                                     type="primary", use_container_width=True):
+                            st.session_state["run_request"] = {"sku": a.sku, "fault": None}
+                            st.switch_page(PAGES["agent_run"])
 
-    clean_rows = []
-    for a in al:
-        supply = a.on_hand / max(0.1, a.avg_daily)
-        clean_rows.append({
-            "SKU": a.sku,
-            "Priority": "High" if a.severity == "high" else ("Medium" if a.severity == "medium" else "Low"),
-            "Issue": "Low Stock" if a.kind == "low_stock" else ("Expiring Soon" if a.kind == "expiry" else "Stock & Expiry"),
-            "On Hand": f"{int(a.on_hand)} units",
-            "Reorder Point": f"{int(a.reorder_point)} units",
-            "Daily Sales": f"{a.avg_daily:.1f} / day",
-            "Stock Cover": f"{supply:.1f} days",
-        })
-    st.dataframe(pd.DataFrame(clean_rows), use_container_width=True, hide_index=True, height=280)
+    with t2:
+        exp_alerts = [a for a in al if a.kind in ("expiry", "both")]
+        if not exp_alerts:
+            st.success("No batches expiring soon. Shelf inventory is fresh.", icon=":material/check_circle:")
+        else:
+            for a in exp_alerts:
+                with st.container(border=True):
+                    e1, e2, e3 = st.columns([5, 3, 2])
+                    with e1:
+                        st.markdown(products.product_cell_html(
+                            a.sku,
+                            subtext=f"Product Code: {a.sku} • Expiry alert condition",
+                            size=46
+                        ), unsafe_allow_html=True)
+                    with e2:
+                        st.markdown(
+                            '<div class="pa-callout tip" style="margin:0; padding:8px 12px; font-size:0.85rem;">'
+                            '<b>Clearance Recommended:</b> Batch approaching expiration. '
+                            'Apply price markdown to clear stock before expiry loss.</div>',
+                            unsafe_allow_html=True
+                        )
+                    with e3:
+                        st.write("")
+                        if st.button("Apply Markdown", icon=":material/percent:", key=f"alt_exp_{a.sku}",
+                                     use_container_width=True):
+                            st.session_state["run_request"] = {"sku": a.sku, "fault": None}
+                            st.switch_page(PAGES["agent_run"])
 
-    st.write("")
-    with st.container(border=True):
-        st.markdown("#### Automated Replenishment Orchestration")
-        st.caption("Select an item below. Demand Forecaster and Supplier Agent will run in parallel to plan replenishment.")
+
+# ------------------------------------------------------------------ Smart Purchasing Assistant
+def agent_run():
+    svc = state.svc()
+    T.header(
+        "Purchasing Assistant",
+        "Automated Order Planning",
+        "Select a product below. The system predicts customer sales, compares supplier quotes, audits store budgets, "
+        "and drafts a complete purchase order ready for manager authorization."
+    )
+
+    req = st.session_state.pop("run_request", None)
+    if req is None:
+        al = svc.alerts(state.user())
+        if not al:
+            T.empty("No active alerts. Browse the Product Catalog to initiate an order manually.")
+            return
+
+        sorted_al = sorted(al, key=lambda a: (0 if a.kind == "stockout" else (1 if a.kind == "both" else 2), -a.on_hand))
         c1, c2 = st.columns([3, 1])
-        sku = c1.selectbox("Choose item alert to run", [a.sku for a in al], format_func=lambda s: next(
-            f"{a.sku} ({a.kind.replace('_', ' ').title()}) - Stock: {int(a.on_hand)} | Reorder Point: {int(a.reorder_point)}"
-            for a in al if a.sku == s))
-        can = svc.can(state.user(), "run_case")
+
+        def _fmt(s):
+            for a in sorted_al:
+                if a.sku == s:
+                    v = products.get_product_visuals(a.sku)
+                    tag = "Restock Needed" if a.kind == "stockout" else ("Clearance Risk" if a.kind == "expiry" else "Dual Risk")
+                    return f"[{tag}] {v['name']} ({a.sku}) - {int(a.on_hand)} on hand"
+            return s
+
+        sku = c1.selectbox("Select Product to Plan", [a.sku for a in sorted_al], format_func=_fmt)
         c2.write("")
-        if c2.button("Run Agents", icon=":material/play_arrow:", type="primary", disabled=not can,
-                     use_container_width=True):
-            st.session_state["run_request"] = {"sku": sku, "fault": None}
-            st.switch_page(PAGES["agent_run"])
-        if not can:
-            st.caption("*Access Control: Only buyers, approvers, or administrators are authorized to initiate purchasing cases.*")
+        if c2.button("Run AI Planning", icon=":material/play_arrow:", type="primary",
+                     disabled=not svc.can(state.user(), "run_case"), use_container_width=True):
+            req = {"sku": sku, "fault": None}
+
+    if req:
+        sku = req["sku"]
+        v = products.get_product_visuals(sku)
+        st.markdown(
+            f'<div class="pa-product-card">'
+            f'{products.product_cell_html(sku, v["name"], v["category"], subtext="Selected for automated purchasing analysis", size=54)}'
+            f'</div>',
+            unsafe_allow_html=True
+        )
+
+        with st.status(f"AI Purchasing Assistant is analyzing '{v['name']}' ...", expanded=True) as status:
+            case: CaseFile | None = None
+            for kind, item in svc.run_case_stream(state.user(), sku, req.get("fault")):
+                if kind == "msg":
+                    author = getattr(item, "author", "")
+                    label = AGENT_LABEL.get(author, author)
+                    st.write(f":material/check_circle: **{label}**: {_summary(item)}")
+                elif kind == "case":
+                    case = item
+
+            if case is None:
+                status.update(label="Analysis could not be completed", state="error")
+                st.warning("No case result was produced. Please try another product.")
+                return
+
+            status.update(label="Analysis Complete: Order recommendation formulated", state="complete")
+
+        st.session_state["last_case"] = case.task_id
+        return render_case_summary(case)
+
+    # Show previous case if available
+    task = st.session_state.get("last_case")
+    case = svc.cases.get(task) if task else None
+    if not case:
+        T.empty("No purchasing plan executed yet in this session. Select a product above to begin.")
+        return
+
+    st.markdown(f"**Previous Sourcing Plan:** Product `{case.sku}`")
+    render_case_summary(case)
 
 
-# ------------------------------------------------------------------ Agent run view
+def _summary(m) -> str:
+    o = m.output
+    a = m.author
+    if a == "stock_monitor":
+        return f"Risk detected ({o.get('kind', 'alert')}). Current stock on hand: {int(o.get('on_hand', 0))} units."
+    if a == "forecaster":
+        return f"Machine learning projected sales of {o.get('mean_14d', 0):.0f} units over 14 days (LightGBM ML model)."
+    if a == "supplier":
+        opts = o.get("options", [])
+        if opts:
+            top = opts[0]
+            return (f"Evaluated {len(opts)} supplier quotes. Best vendor: {top.get('name')} "
+                    f"(@ ${top.get('unit_price', 0):.2f}/unit, {top.get('lead_time', 0)}d delivery, "
+                    f"{top.get('reliability', 0):.0%} reliability).")
+        return "No suppliers available."
+    if a == "po_agent":
+        qty = o.get("qty", 0)
+        price = o.get("unit_price", 0)
+        action = "Replenishment order recommended" if o.get("action") == "order" else "Clearance markdown recommended"
+        return f"{action}: {qty} units from {o.get('supplier_name')} @ ${price:.2f}/unit (Total: ${float(qty) * float(price):,.2f})."
+    if a == "validator":
+        if o.get("passed"):
+            return "Order Safety Check: PASSED. Order complies with store budget caps and supplier minimum order sizes."
+        return "Safety Flag: " + "; ".join(f["message"] for f in o.get("failures", []))
+    if a == "gate":
+        return f"Purchase Order #{o.get('po_id')} formulated in PENDING_APPROVAL state. Waiting for manager sign-off."
+    if a == "human_approver":
+        return f"Manager decision: {o.get('status')} by authorized store manager."
+    return str(o)[:120]
+
+
+def render_case_summary(case: CaseFile):
+    st.markdown("---")
+    v = products.get_product_visuals(case.sku)
+
+    if case.status == "pending_approval" and case.draft:
+        draft = case.draft
+        st.markdown(
+            f'<div class="pa-product-card">'
+            f'<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">'
+            f'{products.product_cell_html(case.sku, v["name"], v["category"], subtext="Purchase Order Drafted", size=52)}'
+            f'<div style="font-size:1.6rem; font-weight:800; color:#0F766E;">${draft.total:,.2f}</div>'
+            f'</div>'
+            f'<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:10px; margin-top:14px;">'
+            f'<div class="pa-stat-box"><div class="label">Requested Order</div><div class="val">{draft.qty} units</div></div>'
+            f'<div class="pa-stat-box"><div class="label">Selected Vendor</div><div class="val">{draft.supplier_name}</div></div>'
+            f'<div class="pa-stat-box"><div class="label">Unit Price</div><div class="val">${draft.unit_price:.2f}</div></div>'
+            f'<div class="pa-stat-box"><div class="label">Order Safety Check</div><div class="val" style="color:#16A34A;">PASSED</div></div>'
+            f'</div>'
+            f'</div>',
+            unsafe_allow_html=True
+        )
+
+        T.callout(
+            f"**Purchase Request #{case.po_id} Created Successfully:** Waiting for manager approval.<br>"
+            "**Corporate Governance Policy:** Buyers (Alice) cannot approve orders. Store Manager (Bob) holds executive sign-off authority.",
+            kind="success"
+        )
+
+        c_a, c_b = st.columns([1, 1])
+        with c_a:
+            if st.button("Switch to Bob & Open Approval Desk", icon=":material/person_check:", type="primary",
+                         use_container_width=True):
+                st.session_state["acting_user"] = "bob"
+                st.switch_page(PAGES["approvals"])
+        with c_b:
+            if st.button("Open Approval Desk", icon=":material/fact_check:", use_container_width=True):
+                st.switch_page(PAGES["approvals"])
+
+    elif case.status == "no_action" and case.draft and case.draft.action == "markdown":
+        st.markdown(
+            f'<div class="pa-product-card">'
+            f'{products.product_cell_html(case.sku, v["name"], v["category"], subtext="Inventory Clearance Action", size=52)}'
+            f'</div>',
+            unsafe_allow_html=True
+        )
+        T.callout(
+            "**Inventory Clearance Action Recommended:** The system determined that ordering more units is unnecessary "
+            "due to expiring shelf stock. Instead, an immediate **20% price markdown** is recommended to liquidate current "
+            "shelf inventory before expiration.",
+            kind="tip"
+        )
+
+
 def workflow_dot(visited: set, failed: set, active: str = "") -> str:
+    """Graphviz state visualization for technical view."""
     nodes = [
-        ("stock_monitor", "Stock Monitor\n(Risk Detection)"),
-        ("forecaster", "Demand Forecasting\n(LightGBM ML)"),
-        ("supplier", "Supplier Intelligence\n(Multi-Criteria Score)"),
+        ("stock_monitor", "Stock Checker\n(Shortage Alert)"),
+        ("forecaster", "Expected Sales\n(LightGBM ML)"),
+        ("supplier", "Supplier Comparison\n(Multi-Factor Score)"),
         ("po_agent", "Purchase Order\n(Plan Formulation)"),
-        ("validator", "Policy Validator\n(Compliance Check)"),
-        ("po_reviser", "Bounded Revision\n(Max 2 Attempts)"),
-        ("escalate", "Human Escalation\n(Exception Queue)"),
-        ("gate_submit", "Safe-Action Gate\n(RBAC Enforcement)"),
-        ("human_approval", "Store Manager\n(Executive Sign-Off)")
+        ("validator", "Safety Check\n(Budget & Policy Gate)"),
+        ("po_reviser", "Bounded Revision\n(Max 2 Tries)"),
+        ("escalate", "Human Escalation\n(Exception Handled)"),
+        ("gate_submit", "Safe-Action Gate\n(Approval Queue)"),
+        ("human_approval", "Store Manager\n(Executive Sign-Off)"),
     ]
     alias = {"gate": "gate_submit", "human_approver": "human_approval"}
     visited = {alias.get(v, v) for v in visited}
@@ -245,45 +515,6 @@ def workflow_dot(visited: set, failed: set, active: str = "") -> str:
     return "\n".join(lines)
 
 
-def _summary(m) -> str:
-    o = m.output
-    a = m.author
-    if a == "stock_monitor":
-        return (f"Risk Detected: {o.get('kind', '').replace('_', ' ').title()} alert ({o.get('severity', '').upper()} priority). "
-                f"Stock on hand: {o.get('on_hand')} units vs. safety reorder point: {o.get('reorder_point')} units.")
-    if a == "forecaster":
-        if "error" in o:
-            return f"Forecasting Warning: {o['error']}"
-        sigma = float(o.get('sigma_daily', 0))
-        return (f"Demand Projection ({o.get('method')}): Projected sales of {o.get('mean_28d')} units over next 28 days "
-                f"(daily volatility: ±{sigma:.1f} units/day).")
-    if a == "supplier":
-        opts = o.get("options", [])
-        if opts:
-            top = opts[0]
-            alt = f" Runner-up: {opts[1]['name']} (Score: {opts[1]['score']:.2f})." if len(opts) > 1 else ""
-            return (f"Optimal Supplier: {top['name']} (Composite Score: {top['score']:.2f}). "
-                    f"Unit Price: ${top.get('unit_price', 0):.2f}, Delivery: {top.get('lead_time', 0)}d, "
-                    f"Reliability: {top.get('reliability', 0):.0%}.{alt}")
-        return "No suppliers available for this product."
-    if a == "po_agent":
-        qty = o.get('qty', 0)
-        price = o.get('unit_price', 0)
-        total = float(qty) * float(price)
-        action = "Replenishment Order Recommended" if o.get('action') == 'order' else "Markdown Recommended"
-        return (f"{action}: {qty} units from {o.get('supplier_name')} @ ${price:.2f}/unit "
-                f"(Total Spend: ${total:,.2f}).")
-    if a == "validator":
-        if o.get("passed"):
-            return "Policy Verification: PASSED. Order is strictly compliant with budget cap, MOQ constraints, and vendor rules."
-        return "Policy Flagged: " + "; ".join(f["message"] for f in o.get("failures", []))
-    if a == "gate":
-        return f"Safe-Action Gate: PO #{o.get('po_id')} created in {o.get('status')} state. Ready for manager sign-off."
-    if a == "human_approver":
-        return f"Manager Decision: Order {o.get('status')} by authorized manager."
-    return json.dumps(o)[:160]
-
-
 def render_step(m, container):
     tone = AGENT_TONE.get(m.author, "muted")
     if m.author == "validator" and not m.output.get("passed", True):
@@ -291,144 +522,14 @@ def render_step(m, container):
     if m.author == "forecaster" and "error" in m.output:
         tone = "bad"
     color = T.TONES[tone][0]
-    conf = f" - confidence {m.confidence}" if m.confidence is not None else ""
     with container:
-        st.markdown(f'<div class="pa-step" style="--tone:{color}"><div class="pa-dot"></div><div style="flex:1">'
-                    f'<div class="a">{T.esc(AGENT_LABEL.get(m.author, m.author))}</div>'
-                    f'<div>{T.esc(_summary(m))}</div>'
-                    f'<div class="m">{T.esc(m.latency_ms)} ms{T.esc(conf)} - {T.esc(m.mode)}</div></div></div>',
-                    unsafe_allow_html=True)
-        with st.expander("View Audit Trail & Raw Decision Evidence", expanded=False):
-            st.json({"inputs": m.inputs, "output": m.output, "evidence": m.evidence}, expanded=False)
-
-
-def agent_run():
-    svc = state.svc()
-    T.header(
-        "Autonomous Replenishment",
-        "AI Order Planning Workflow",
-        "Step-by-step trace of multi-agent collaboration: Stock Monitor detects shortfalls, "
-        "Demand Forecaster (LightGBM) and Supplier Intelligence formulate options in parallel, "
-        "and Policy Validator audits constraints before submitting to the manager gate."
-    )
-    req = st.session_state.pop("run_request", None)
-    if req is None:
-        al = svc.alerts(state.user())
-        c1, c2 = st.columns([3, 1])
-        if al:
-            # Sort alerts so restock orders come first
-            sorted_al = sorted(
-                al,
-                key=lambda a: (0 if a.kind == "stockout" else (1 if a.kind == "both" else 2), -a.on_hand)
-            )
-
-            def _fmt_alert(s):
-                for a in sorted_al:
-                    if a.sku == s:
-                        tag = "Restock Order" if a.kind == "stockout" else (
-                            "Clearance Risk" if a.kind == "expiry" else "Dual Risk"
-                        )
-                        return (f"[{tag}] {a.sku} ({a.severity.title()} Priority) - "
-                                f"On Hand: {int(a.on_hand)} | Safety Threshold: {int(a.reorder_point)}")
-                return s
-
-            sku = c1.selectbox("Select Product Alert to Process", [a.sku for a in sorted_al], format_func=_fmt_alert)
-            c2.write("")
-            if c2.button("Run AI Planning Agents", icon=":material/play_arrow:", type="primary",
-                         disabled=not svc.can(state.user(), "run_case"), use_container_width=True):
-                req = {"sku": sku, "fault": None}
-    left, right = st.columns([3, 2])
-    graph_slot = right.empty()
-    if req:
-        visited, failed = set(), set()
-        graph_slot.graphviz_chart(workflow_dot(visited, failed, "stock_monitor"), use_container_width=True)
-        with left:
-            status = st.status(f"Coordinating AI Agents for SKU '{req['sku']}' ...", expanded=True)
-            case: CaseFile | None = None
-            for kind, item in svc.run_case_stream(state.user(), req["sku"], req.get("fault")):
-                if kind == "msg":
-                    m_author = getattr(item, "author", "")
-                    m_output = getattr(item, "output", {})
-                    visited.add(m_author)
-                    if (m_author == "validator" and not m_output.get("passed", True)) or "error" in m_output:
-                        failed.add(m_author)
-                    render_step(item, status)
-                    graph_slot.graphviz_chart(workflow_dot(visited, failed), use_container_width=True)
-                elif kind == "case":
-                    case = item  # type: ignore[assignment]
-            if case is None:
-                status.update(label="Analysis could not be completed", state="error")
-                st.warning("No case result was produced. Please try another product.")
-                return
-            status.update(
-                label=f"Multi-Agent Plan Formulated: {case.status.replace('_', ' ').title()}",
-                state="complete" if case.status in ("pending_approval", "no_action") else "error"
-            )
-        st.session_state["last_case"] = case.task_id
-        return render_case_summary(case)
-    task = st.session_state.get("last_case")
-    case = svc.cases.get(task) if task else None
-    if not case:
-        graph_slot.graphviz_chart(workflow_dot(set(), set()), use_container_width=True)
-        with left:
-            T.empty("No case has been executed yet in this session. Select an alert above or run the Interactive Guided Tour.")
-        return
-    with left:
-        st.markdown(f"**Previous Execution Plan:** Case `{case.task_id}` for Product `{case.sku}`")
-        box = st.container(border=True)
-        for m in case.trace:
-            render_step(m, box)
-    graph_slot.graphviz_chart(workflow_dot({m.author for m in case.trace},
-                                           {m.author for m in case.trace if m.author == "validator"
-                                            and not m.output.get("passed", True)}), use_container_width=True)
-    render_case_summary(case)
-
-
-def render_case_summary(case):
-    st.markdown("---")
-    c = st.columns(4)
-    with c[0]:
-        outcome_label = {
-            "pending_approval": "Awaiting Manager Sign-Off",
-            "created": "Order Committed to ERP",
-            "no_action": "Clearance / No Purchase Needed",
-            "escalated": "Escalated for Human Review",
-            "rejected": "Rejected by Approver",
-        }.get(case.status, case.status.replace("_", " ").title())
-        T.kpi("Workflow Outcome", outcome_label, f"Ref: {case.task_id[:8]}", T.STATUS_TONE.get(case.status, "muted"))
-    with c[1]:
-        passes = len(case.validations)
-        T.kpi("Policy Compliance", f"{passes} Gate Check{'s' if passes != 1 else ''}", "100% Verified Compliant", "primary")
-    with c[2]:
-        fc_val = f"{case.forecast.confidence:.2f}" if case.forecast and case.forecast.confidence is not None else "1.00"
-        T.kpi("Forecast Reliability", f"Score: {fc_val}", "LightGBM ML Confidence", "warn" if case.review_flag else "good")
-    with c[3]:
-        T.kpi("Execution Latency", f"{case.latency_s:.2f} s", "End-to-End Coordination", "muted")
-    if case.notes:
-        for n in case.notes:
-            st.warning(n)
-    if case.status == "pending_approval":
-        T.callout(
-            f"<b>Purchase Order #{case.po_id} Formulated Successfully:</b> The order is awaiting manager authorization.<br>"
-            "<b>Corporate Governance:</b> Buyers (Alice) cannot self-approve. Store Manager (Bob) must review and sign off.",
-            kind="success"
-        )
-        c_a, c_b = st.columns([1, 1])
-        with c_a:
-            if st.button("Switch to Bob & Open Approval Dashboard", icon=":material/person_check:", type="primary",
-                         use_container_width=True):
-                st.session_state["acting_user"] = "bob"
-                st.switch_page(PAGES["approvals"])
-        with c_b:
-            if st.button("Open Approval Dashboard (current role)", use_container_width=True):
-                st.switch_page(PAGES["approvals"])
-    elif case.status == "no_action" and case.draft and case.draft.action == "markdown":
-        T.callout(
-            f"<b>Inventory Clearance Recommended:</b> The system identified that placing a new purchase order is unnecessary "
-            f"due to expiring shelf inventory. Recommended action: <b>{case.draft.markdown_pct}% price markdown</b> "
-            f"to sell remaining stock before expiration.",
-            kind="tip"
+        st.markdown(
+            f'<div class="pa-step" style="--tone:{color}"><div class="pa-dot"></div><div style="flex:1">'
+            f'<div class="a">{T.esc(AGENT_LABEL.get(m.author, m.author))}</div>'
+            f'<div>{T.esc(_summary(m))}</div>'
+            f'</div></div>',
+            unsafe_allow_html=True
         )
 
 
-PAGES: dict = {}  # filled by app.py so pages can link to each other
+PAGES: dict = {}  # populated by app.py

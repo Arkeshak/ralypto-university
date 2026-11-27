@@ -143,7 +143,7 @@ class ProcureService:
         if task:  # resume the LangGraph human-approval interrupt
             case = resume_approval(self.env, self.gate, self.tracer, task, user, True, reason)
             self.cases[task] = case
-            return self.gate.status(po_id)
+            return self.gate.status(po_id) or ""
         return self.gate.decide(po_id, user, True, idem_key=f"approve-{po_id}", reason=reason)
 
     def reject(self, user: str, po_id: int, reason: str = "") -> str:
@@ -151,7 +151,7 @@ class ProcureService:
         task = self._task_for(po_id)
         if task:
             self.cases[task] = resume_approval(self.env, self.gate, self.tracer, task, user, False, reason)
-            return self.gate.status(po_id)
+            return self.gate.status(po_id) or ""
         return self.gate.decide(po_id, user, False, idem_key=f"reject-{po_id}", reason=reason)
 
     def edit(self, user: str, po_id: int, qty: int, reason: str = ""):
@@ -198,6 +198,8 @@ class ProcureService:
     def po_csv(self, user: str, po_id: int) -> bytes:
         self.require(user, "export")
         po = self.gate.po(po_id)
+        if po is None:
+            raise PermissionDenied(f"PO #{po_id} not found")
         buf = io.StringIO()
         w = csv.writer(buf)
         w.writerow(["po_id", "status", "supplier", "sku", "qty", "unit_price", "total", "created_by", "approved_by"])
@@ -211,6 +213,8 @@ class ProcureService:
         from reportlab.lib.units import mm
         from reportlab.pdfgen import canvas
         po = self.gate.po(po_id)
+        if po is None:
+            raise PermissionDenied(f"PO #{po_id} not found")
         trail = self.audit(user, po_id=po_id)
         buf = io.BytesIO()
         c = canvas.Canvas(buf, pagesize=A4)
