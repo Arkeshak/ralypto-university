@@ -10,10 +10,11 @@ Arkeshkar · Seenujan · Harishchandran · Braynkanth
 
 *A production-ready, auditable multi-agent AI system for retail inventory forecasting, supplier sourcing, expiry clearance, and human-governed procurement in modern retail and wholesale businesses.*
 
-[Live Demo](#live-application-tour) · [Business Problem](#the-177t-inventory-distortion-problem) · [Core Features](#core-capabilities) · [Screenshots](#application-walkthrough--screenshots) · [Architecture](#multi-agent-architecture) · [Quickstart](#setup--quickstart) · [Benchmark](#empirical-evaluation-benchmark) · [Team](#team)
+[Demo Video](project-demo.mp4) · [Executive Summary](#executive-summary) · [Walkthrough](#application-walkthrough--user-experience) · [Core Features](#core-capabilities) · [Architecture](#multi-agent-architecture) · [Benchmark](#empirical-evaluation-benchmark) · [Quickstart](#setup--quickstart) · [Team](#team)
 
 <br/>
 
+[![Demo Video](https://img.shields.io/badge/Demo%20Video-project--demo.mp4-E11D48?style=for-the-badge&logo=youtube&logoColor=white)](project-demo.mp4)
 [![Python](https://img.shields.io/badge/Python-3.9%E2%80%933.12-0F766E?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
 [![LangGraph](https://img.shields.io/badge/Orchestration-LangGraph-0F766E?style=for-the-badge)](https://langchain-ai.github.io/langgraph/)
 [![Forecasting](https://img.shields.io/badge/Forecasting-LightGBM%20ML-0D9488?style=for-the-badge)](https://lightgbm.readthedocs.io)
@@ -22,6 +23,10 @@ Arkeshkar · Seenujan · Harishchandran · Braynkanth
 [![Currency](https://img.shields.io/badge/Currency-LKR%20(Rs.)-F59E0B?style=for-the-badge)](#localized-for-commercial-retail)
 
 </div>
+
+---
+
+> 🎬 **Project Walkthrough Video:** Watch the complete end-to-end demonstration showcasing the live multi-agent workflow, stock alerts, LightGBM forecasting, supplier selection, clearance markdowns, and manager approvals: [**`project-demo.mp4`**](project-demo.mp4).
 
 ---
 
@@ -316,6 +321,7 @@ ralypto-university/
 │   ├── Workflow.md             # Detailed agent workflow, state machine, and safety model
 │   ├── PROJECT_DETAILS.md      # Comprehensive technical reference and benchmark results
 │   └── EXTENDING.md            # Guide for registering new custom agents and tools
+├── project-demo.mp4            # End-to-end video demonstration of ProcureAgents
 ├── pyproject.toml              # Ruff, Pytest, and Pyrefly configuration
 └── README.md                   # Project documentation and quickstart guide
 ```
