@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import html
+import re
 
 import streamlit as st
 
@@ -190,21 +191,30 @@ h1, h2, h3, h4 {{
 }}
 .pa-callout {{
   background: #F0FDFA;
-  border-left: 4px solid {PRIMARY};
-  border-radius: 0 10px 10px 0;
+  border: 1px solid #CCFBF1;
+  border-left: 5px solid {PRIMARY};
+  border-radius: 10px;
   padding: 14px 18px;
   margin: 14px 0;
   font-size: 0.9rem;
   color: {TEXT};
   line-height: 1.5;
+  box-shadow: 0 1px 3px 0 rgba(0,0,0,0.03);
 }}
 .pa-callout.tip {{
   background: #FFFBEB;
+  border-color: #FED7AA;
   border-left-color: {AMBER};
 }}
 .pa-callout.success {{
   background: #F0FDF4;
+  border-color: #BBF7D0;
   border-left-color: {GREEN};
+}}
+.pa-callout.warning {{
+  background: #FEF2F2;
+  border-color: #FECACA;
+  border-left-color: {RED};
 }}
 .pa-kpi {{
   background: {SURFACE};
@@ -503,10 +513,43 @@ def flow_banner(title: str, subtitle: str, steps: list[tuple[str, str, str]]):
 
 
 def callout(text: str, kind: str = "info"):
-    """Render a clean callout box (info, tip, or success)."""
+    """Render an executive callout box with proper HTML formatting, icons, and typography."""
     cls = "pa-callout"
     if kind == "tip":
         cls += " tip"
+        icon_html = '<span style="display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%; background:#FEF3C7; color:#D97706; font-size:0.95rem;">💡</span>'
     elif kind == "success":
         cls += " success"
-    st.markdown(f'<div class="{cls}">{text}</div>', unsafe_allow_html=True)
+        icon_html = '<span style="display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%; background:#DCFCE7; color:#16A34A; font-size:0.95rem; font-weight:700;">✓</span>'
+    elif kind in ("warning", "bad"):
+        cls += " warning"
+        icon_html = '<span style="display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%; background:#FEE2E2; color:#DC2626; font-size:0.95rem;">⚠️</span>'
+    else:
+        icon_html = '<span style="display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%; background:#CCFBF1; color:#0F766E; font-size:0.95rem;">ℹ️</span>'
+
+    # Convert markdown syntax to HTML so it renders properly inside the HTML div
+    formatted = text
+    # Convert **bold** to <b>bold</b>
+    formatted = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", formatted)
+    # Convert *italic* to <i>italic</i>
+    formatted = re.sub(r"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)", r"<i>\1</i>", formatted)
+    # Convert `code` to <code>code</code>
+    formatted = re.sub(r"`(.+?)`", r'<code style="background:#E2E8F0; padding:1px 5px; border-radius:4px; font-size:0.88em; color:#0F172A;">\1</code>', formatted)
+
+    # Check if there is a header break (<br>)
+    if "<br>" in formatted:
+        parts = formatted.split("<br>", 1)
+        content_html = (
+            f'<div style="font-weight:700; color:#0F172A; font-size:0.95rem; margin-bottom:4px;">{parts[0].strip()}</div>'
+            f'<div style="color:#334155; font-size:0.88rem; line-height:1.5;">{parts[1].strip()}</div>'
+        )
+    else:
+        content_html = f'<div style="color:#1E293B; font-size:0.9rem; line-height:1.5;">{formatted}</div>'
+
+    html_out = (
+        f'<div class="{cls}" style="display:flex; align-items:flex-start; gap:14px;">'
+        f'<div style="flex-shrink:0; margin-top:1px;">{icon_html}</div>'
+        f'<div style="flex:1;">{content_html}</div>'
+        f'</div>'
+    )
+    st.markdown(html_out, unsafe_allow_html=True)
