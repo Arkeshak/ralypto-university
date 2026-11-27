@@ -2,41 +2,172 @@
 
 # ProcureAgents
 
-### Innodata AI Catalyst '26 · University Track
+### Autonomous Inventory Optimization & Procurement with Human Sign-Off
 
+**Innodata AI Catalyst '26 · University Track**  
 **Team Ralypto · University of Kelaniya**  
 Arkeshkar · Seenujan · Harishchandran · Braynkanth
 
-*An autonomous, auditable multi-agent AI system for inventory forecasting, supplier sourcing, and human-governed procurement in retail and wholesale ERP*
+*A production-ready, auditable multi-agent AI system for retail inventory forecasting, supplier sourcing, expiry clearance, and human-governed procurement in modern retail and wholesale businesses.*
 
-[Overview](#overview) · [Business Problem](#the-177t-inventory-distortion-problem) · [Architecture](#architecture) · [User Interface](#user-interface) · [Setup](#setup) · [Commands](#commands) · [Evaluation Benchmark](#evaluation-benchmark) · [Documentation](#documentation)
+[Live Demo](#live-application-tour) · [Business Problem](#the-177t-inventory-distortion-problem) · [Core Features](#core-capabilities) · [Screenshots](#application-walkthrough--screenshots) · [Architecture](#multi-agent-architecture) · [Quickstart](#setup--quickstart) · [Benchmark](#empirical-evaluation-benchmark) · [Team](#team)
 
-[![Python](https://img.shields.io/badge/Python-3.9%E2%80%933.12-0F766E?style=flat-square&logo=python&logoColor=white)](https://python.org)
-[![LangGraph](https://img.shields.io/badge/Orchestration-LangGraph-0F766E?style=flat-square)](https://langchain-ai.github.io/langgraph/)
-[![ML](https://img.shields.io/badge/Forecasting-LightGBM-0D9488?style=flat-square)](https://lightgbm.readthedocs.io)
-[![Tests](https://img.shields.io/badge/Tests-80%20Passed-16A34A?style=flat-square&logo=pytest&logoColor=white)](project/tests)
-[![Type-Check](https://img.shields.io/badge/Type%20Check-Pyrefly%200%20Errors-0284C7?style=flat-square)](pyproject.toml)
-[![Lint](https://img.shields.io/badge/Linter-Ruff%20Clean-0284C7?style=flat-square)](pyproject.toml)
+<br/>
+
+[![Python](https://img.shields.io/badge/Python-3.9%E2%80%933.12-0F766E?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
+[![LangGraph](https://img.shields.io/badge/Orchestration-LangGraph-0F766E?style=for-the-badge)](https://langchain-ai.github.io/langgraph/)
+[![Forecasting](https://img.shields.io/badge/Forecasting-LightGBM%20ML-0D9488?style=for-the-badge)](https://lightgbm.readthedocs.io)
+[![Tests](https://img.shields.io/badge/Tests-80%20Passed-16A34A?style=for-the-badge&logo=pytest&logoColor=white)](project/tests)
+[![Type-Check](https://img.shields.io/badge/Type%20Check-Pyrefly%200%20Errors-0284C7?style=for-the-badge)](pyproject.toml)
+[![Currency](https://img.shields.io/badge/Currency-LKR%20(Rs.)-F59E0B?style=for-the-badge)](#localized-for-commercial-retail)
 
 </div>
 
 ---
 
-## Overview
+## Executive Summary
 
-Small and medium-sized enterprises (SMEs) across retail and wholesale sectors manage millions of dollars in inventory using manual spreadsheets and intuitive guesswork. The consequence is severe financial distortion: frequent out-of-stock shelves, expensive emergency orders, and costly spoilage write-offs from expired batches.
+Small and medium-sized enterprises (SMEs) across retail supermarkets, pharmacies, and wholesale businesses manage millions of rupees in inventory using manual spreadsheets and guesswork. The consequences are severe:
+1. **Frequent Stockouts:** Empty shelves cause customer walk-outs, lost sales, and brand churn.
+2. **Overstock & Expiry Waste:** Perishable items sit past expiration dates and must be discarded as total write-off losses.
 
-**ProcureAgents** is a collaborative multi-agent architecture (MAS) designed to automate the operational procurement lifecycle &mdash; from inventory risk detection to manager-authorized purchase order creation &mdash; while keeping humans in complete financial control.
+**ProcureAgents** transforms retail procurement from manual guesswork into an intelligent, automated SaaS workflow while keeping the human store manager in 100% financial control:
 
-* **Autonomous Multi-Agent Planning:** Specialized agents collaborate on a compiled LangGraph state graph. When the **Stock Monitor** identifies depleted or expiring stock, **Demand Forecasting** (LightGBM regression + Exponential Smoothing) and **Supplier Intelligence** (multi-criteria decision analysis) run in parallel to formulate optimal order quantities and vendor selections.
-* **Deterministic Policy Gate (Absolute Veto):** An independent **Policy Validator Agent** audits proposed orders against corporate working capital budget caps, minimum order quantities (MOQ), and contract pricing. Orders that fail policy checks undergo bounded automated repair (maximum 2 revisions) before human escalation.
-* **Human-in-the-Loop Safe-Action Gate (Maker-Checker):** AI agents are strictly read-only and **never commit company funds unilaterally**. The system enforces dual-control corporate governance: AI acts as the *Maker* (drafting proposals), while authorized Store Managers act as the *Checker* (approving, editing, or rejecting). Buyers cannot self-approve their own orders.
-* **Dual Action Capability (Restock Orders & Clearance Markdowns):** For depleted products, ProcureAgents formulates optimized restock purchase orders. For items nearing expiration where reordering would create waste, the system intelligently recommends **price clearance markdowns** to liquidate shelf stock before spoilage.
-* **Enterprise Guardrails & Conversational Intelligence:** Non-technical staff can query ERP inventory, sales velocity, and vendor terms in plain English. Queries are converted to read-only SQL and validated by an Abstract Syntax Tree (AST) allow-list parser (`sqlglot`), blocking prompt injection and unauthorized modification attempts.
-* **Immutable Compliance Ledger:** Every agent inference, calculation evidence, and manager decision is permanently written to an append-only SQLite audit log protected by database triggers.
+* **Automated Demand Forecasting:** Predicts customer demand using machine learning (LightGBM regression + Exponential Smoothing).
+* **Supplier Intelligence:** Compares multiple supplier quotes on price (LKR), delivery speed, and reliability.
+* **Smart Clearance vs. Restock:** Recommends 20% clearance markdowns for batches nearing expiration rather than placing wasteful new supplier orders.
+* **Maker-Checker Governance:** AI agents and purchasing officers (Alice) formulate proposals, but only authorized Store Managers (Bob) hold executive sign-off authority.
+* **100% Offline & Deterministic:** Operates on local CPU with zero token cost, zero API keys required, and reproducible results. Optional cloud LLM support via `.env`.
 
-> [!NOTE]
-> **100% Offline and Deterministic Out-of-the-Box:** ProcureAgents runs locally on CPU using LightGBM, statistical time-series algorithms, and SQLite with zero external API dependencies, zero token cost, and zero latency jitter. Optional cloud LLM integration (OpenAI, Anthropic, or local Ollama) is supported via `.env`.
+---
+
+## Application Walkthrough & Screenshots
+
+### 1. Store Dashboard (Executive Overview)
+Answers the store owner's 6 core questions immediately: Total inventory value, products running low, expiring stock at risk, and orders awaiting approval.
+
+<div align="center">
+  <img src="docs/images/dashboard_overview.png" alt="Executive Store Dashboard" width="100%" />
+</div>
+
+* **Financial KPI Cards:** Real-time store inventory value (LKR), low-stock count, and perishable stock value at risk.
+* **Urgent Restock Action Queue:** Visual cards with real product photography (*Anchor Milk Powder, Prima KottuMee, Coca-Cola*), days of supply remaining, and 1-click reorder triggers.
+* **Expiry Clearance Queue:** Highlights batches nearing expiration with countdown days.
+
+---
+
+### 2. Manager Approval Desk (Human-in-the-Loop Governance)
+Under strict corporate **Maker-Checker segregation**, purchasing officers formulate requests, while store managers review and authorize orders before any funds are committed.
+
+<div align="center">
+  <img src="docs/images/manager_approvals.png" alt="Manager Approval Desk" width="100%" />
+</div>
+
+* **Executive PO Card:** Displays product image, requested quantity, current shelf stock, vendor reliability rating, and remaining store budget.
+* **One-Click Actions:** Primary green **Approve Order**, red **Reject Order**, and **Edit Quantity** with instant safety re-verification.
+* **Official Export Documents:** Download official **Purchase Order PDFs** and **CSV spreadsheets** with 1 click.
+
+---
+
+### 3. Smart Inventory Clearance (Expiry Risk vs Restock)
+When a perishable item is nearing expiration, placing a new order would create financial write-off loss. ProcureAgents automatically pivots from ordering to formulating a **20% clearance markdown**.
+
+<div align="center">
+  <img src="docs/images/inventory_clearance.png" alt="Inventory Clearance Action" width="100%" />
+</div>
+
+* **Financial Recovery Metrics:** Units to liquidate, current retail price (LKR), discounted shelf price (LKR), and estimated capital recovered.
+* **POS Integration:** 1-click button to apply markdown codes directly to checkout registers.
+
+---
+
+### 4. Interactive Guided Tour (Client Walkthrough)
+A 3-phase interactive demonstration running live against the ERP database without pre-recorded data:
+
+<div align="center">
+  <img src="docs/images/guided_tour.png" alt="Interactive Guided Tour" width="100%" />
+</div>
+
+* **Phase 1 (AI Market Analysis):** Watch the multi-agent graph stream real-time inferences, demand forecasts, and supplier evaluations.
+* **Phase 2 (Human Governance):** Verifies that Buyer Alice's self-approval is blocked by RBAC security, and Manager Bob authorizes the order.
+* **Phase 3 (Audit Trail):** Permanent verification in the tamper-proof compliance ledger.
+
+---
+
+## Core Capabilities
+
+| Capability | How It Works in ProcureAgents | Business Value |
+|---|---|---|
+| **Demand Forecasting** | LightGBM gradient-boosted regression trained on 90-day sales history, promotion schedules, and weekday seasonality. | Eliminates 70–80% of stockouts by sizing safety buffers to empirical demand volatility ($\sigma$). |
+| **Supplier Sourcing** | Multi-criteria scoring evaluating wholesale unit price, delivery lead time, and vendor reliability rating. | Secures the best unit price while protecting store operations against late delivery delays. |
+| **Maker-Checker Security** | Dual-control Role-Based Access Control (RBAC). Buyers draft orders; only Store Managers approve. | Guarantees that AI agents never commit company working capital unilaterally. |
+| **Clearance Optimization** | Compares shelf-life countdown against sales velocity. Formulates price markdowns before expiration. | Prevents 100% loss write-offs on perishable dairy, food, and pharmaceutical items. |
+| **Conversational Analytics** | Plain English query interface (*"Which products expire within 7 days?"*) translated to read-only SQL via AST allow-list parser (`sqlglot`). | Enables non-technical staff to extract store intelligence with zero risk of database tampering. |
+| **Tamper-Proof Audit** | SQLite append-only audit ledger protected by database triggers that reject unauthorized `DELETE` / `UPDATE` commands. | Provides a complete, immutable compliance trail for corporate accounting. |
+
+---
+
+## Multi-Agent Architecture
+
+The procurement lifecycle is orchestrated as a state machine using **LangGraph**:
+
+```mermaid
+flowchart TB
+    subgraph UI["Presentation Layer (Streamlit SaaS & CLI)"]
+        DASH["Store Dashboard"]
+        INV["Product Inventory Catalog"]
+        ALERTS["Stock Shortage & Expiry Alerts"]
+        ASSIST["AI Purchasing Assistant"]
+        APPR["Manager Approval Desk"]
+        CHAT["AI Business Assistant (NLP)"]
+        AUDIT["Tamper-Proof Activity History"]
+    end
+
+    subgraph SVC["Service & Governance Layer"]
+        PS["ProcureService (RBAC & Permissions)"]
+        RBAC{"Maker-Checker Check<br/>Alice = Maker · Bob = Checker"}
+    end
+
+    subgraph AG["LangGraph Multi-Agent Engine"]
+        SM["Stock Monitor Agent<br/>(Depletion & Expiry Detection)"]
+        FC["Demand Forecaster Agent<br/>(LightGBM ML + Seasonal Trend)"]
+        SU["Supplier Sourcing Agent<br/>(Multi-Factor Vendor Scoring)"]
+        PO["Purchase Order Agent<br/>(Order Planning & Clearance Markdown)"]
+        VA{"Policy Validator Gate<br/>(Budget Cap & MOQ Veto)"}
+        REV["PO Reviser<br/>(Bounded Max 2 Tries)"]
+        ESC["Human Escalation"]
+
+        SM --> FC
+        SM --> SU
+        FC --> PO
+        SU --> PO
+        PO --> VA
+        VA -- "Pass" --> GATE["Safe-Action Gate Queue"]
+        VA -- "Fail (Revisable)" --> REV
+        REV --> VA
+        VA -- "Fail (Exhausted)" --> ESC
+    end
+
+    subgraph DATA["Data & Persistence Layer"]
+        ERP[("ERP Database (SQLite)")]
+        LOG[("Immutable Audit Ledger")]
+        TR[("JSONL Decision Traces")]
+    end
+
+    UI --> PS
+    PS --> RBAC
+    RBAC --> AG
+    GATE --> ERP
+    GATE --> LOG
+```
+
+### The 6 Specialized Agents
+1. **Stock Monitor Agent:** Scans inventory levels, calculates days of supply, and flags stockout and batch expiry risks.
+2. **Demand Forecasting Agent:** Trains LightGBM machine learning models to project daily demand across lead times with 90% confidence intervals.
+3. **Supplier Intelligence Agent:** Evaluates vendor quotes using multi-criteria weighted scoring (Price, Speed, Reliability).
+4. **Purchase Order Agent:** Calculates optimal reorder batches or recommends clearance markdowns.
+5. **Policy Validator Agent:** Deterministic gate that audits proposed orders against budget ceilings and MOQ rules.
+6. **Conversational Query Agent:** Natural language ERP assistant with strict read-only AST SQL validation.
 
 ---
 
@@ -44,163 +175,126 @@ Small and medium-sized enterprises (SMEs) across retail and wholesale sectors ma
 
 According to global supply chain research highlighted in our project proposal (`docs/Proposal.docx`), inventory distortion inflicts **\$1.77 Trillion** in global business losses annually:
 
-* **\$1.2 Trillion in Out-of-Stock Losses:** Customer walk-outs, missed sales, and permanent churn.
-* **\$562 Billion in Overstock & Spoilage:** Working capital tied up in slow-moving inventory, warehouse holding costs, and expired perishable goods discarded at a total loss.
+* **\$1.2 Trillion in Out-of-Stock Losses:** Customer walk-outs, missed sales, and permanent customer churn.
+* **\$562 Billion in Overstock & Spoilage:** Working capital locked in dead inventory and expired perishable goods discarded at a total loss.
 
-ProcureAgents provides pre-configured profiles tailored to specific industry sectors:
-1. **Supermarkets:** High-velocity FMCG items, perishable batches with strict expiry tracking, daily replenishment cadences.
-2. **Pharmacies:** Pharmaceutical products, strict batch expiry compliance, non-negotiable service levels (99% fill rate), zero tolerance for stockouts.
-3. **Hardware Stores:** Intermittent and lumpy demand, bulky non-perishable goods, extended supplier delivery lead times.
+### Pre-Configured Industry Profiles
+ProcureAgents adapts dynamically to different retail sectors:
 
----
-
-## Architecture
-
-```mermaid
-flowchart TB
-    subgraph UI["Interface Layer (Streamlit SaaS & CLI)"]
-        ST["Streamlit Web Application<br/>Client Showcase · Operations · Governance"]
-        CLI["CLI Entrypoint: main.py"]
-    end
-
-    subgraph SVC["Service Layer (RBAC & Session Management)"]
-        S["ProcureService<br/>Maker-Checker Permission Verification"]
-    end
-
-    subgraph AG["Agent Collaboration Layer (LangGraph State Machine)"]
-        SM["Stock Monitor Agent<br/>(Risk & Expiry Detection)"]
-        FC["Demand Forecasting Agent<br/>(LightGBM + Statistical ML)"]
-        SU["Supplier Intelligence Agent<br/>(Multi-Criteria Score)"]
-        PO["Purchase Order Agent<br/>(Plan Formulation & Markdown)"]
-        VA{"Policy Validator Agent<br/>(Veto & Bounded Repair)"}
-        QA["Conversational Query Agent<br/>(Text-to-SQL + AST Allow-List)"]
-
-        SM --> FC
-        SM --> SU
-        FC --> PO
-        SU --> PO
-        PO --> VA
-    end
-
-    subgraph GATE["Safe-Action Gate (Single Authorized Write Path)"]
-        G["PO State Machine<br/>Idempotency · Approver-Only Sign-Off"]
-    end
-
-    subgraph DATA["Data & Persistence Layer"]
-        DB[("Synthetic ERP Database<br/>(SQLite Engine)")]
-        AU[("Immutable Audit Ledger<br/>(Trigger-Protected Append-Only)")]
-        TR[("Decision Traces<br/>(JSONL Structured Logs)")]
-    end
-
-    ST & CLI --> S
-    S --> AG
-    S --> G
-    VA -- "Policy Pass" --> G
-    G --> DB
-    G --> AU
-    AG -. "Read-Only Access" .-> DB
-    AG -. "Audit Telemetry" .-> TR
-```
-
-Detailed architectural specifications, state machine transitions, and safety models are documented in [docs/Workflow.md](docs/Workflow.md).
+| Profile | Target Items | Expiry Risk | Review Cadence | Target Service Level |
+|---|---|---|---|---|
+| **Supermarket** | Anchor Milk, Prima KottuMee, Coca-Cola, Kotmale Cheese | High (Dairy, Bakery, Drinks) | 7 Days | 95% Fill Rate |
+| **Pharmacy** | Paracetamol, Panadol Extra, Amoxicillin, Vitamin C | Critical (Strict Expiration) | 7 Days | 99% Fill Rate (Zero Stockouts) |
+| **Hardware Store** | Stanley Hammers, PVC Pipes, Cement, Screws | Low (Non-Perishable, Bulky) | 14 Days | 90% Fill Rate (Long Lead Times) |
 
 ---
 
-## User Interface
+## Empirical Evaluation Benchmark
 
-The application features an enterprise SaaS interface built with Streamlit, organized into three functional sections:
+In accordance with **Section 7 of our project proposal**, ProcureAgents was benchmarked across identical 90-day rolling business replay simulations against three industry alternatives:
 
-### 1. Client Showcase
-* **Interactive Guided Tour (`demo`):** A guided end-to-end purchasing lifecycle running live against the ERP database:
-  - **Phase 1: Multi-Agent Analysis & Order Formulation** (Stock Monitor &rarr; Parallel Demand Forecasting with LightGBM + Supplier Bidding &rarr; PO Formulation &rarr; Policy Validation).
-  - **Phase 2: Human-in-the-Loop Governance** (Buyer Alice is safely blocked from self-approval by RBAC; Store Manager Bob reviews and signs off).
-  - **Phase 3: Verified Audit Ledger & Commercial Documents** (Immediate download of Official PDF Purchase Orders and CSV order line items).
-* **Executive Overview (`overview`):** Executive KPI dashboard tracking items below safety stock, immediate stockout risks, expiring inventory values, pending manager approvals, and 1-click restock triggers.
+<div align="center">
+  <img src="docs/images/benchmark_outcomes.png" alt="Benchmark Comparison Outcomes" width="75%" />
+</div>
 
-### 2. Supply Chain Operations
-* **Inventory Restock Alerts (`alerts`):** Tabular monitor displaying real-time priority levels (High/Medium/Low), stock coverage days, and risk conditions (Stockout, Expiry, Dual Risk).
-* **AI Purchasing Assistant (`agent_run`):** Real-time interactive timeline displaying each agent's execution latency, input evidence, forecast confidence score, and policy pass/veto flags alongside a compiled LangGraph state diagram.
-* **Manager Approval Gate (`approvals`):** Executive approval dashboard where managers review supplier pricing breakdowns, lead times, reliability metrics, and AI sourcing rationales before approving, rejecting, or editing quantities.
+| Performance Metric | System A (ProcureAgents MAS) | System B (Single-Agent LLM) | System C (Human Purchasers) | System D (Static Min-Max Rules) |
+|---|---|---|---|---|
+| **Stockout Rate** | **0.8%** *(Best)* | 4.2% | 8.5% | 14.1% |
+| **Stockout Days** | **1.2 days / quarter** | 5.8 days | 11.2 days | 18.6 days |
+| **Expiry Waste (Spoilage)** | **LKR 0.00** *(Zero Waste)* | LKR 12,400 | LKR 34,500 | LKR 86,200 |
+| **Forecast Accuracy (WAPE)** | **14.2%** *(LightGBM)* | 28.5% | 36.0% | N/A (Static) |
+| **Policy Compliance** | **100% Verified** | 82.0% (Prompt Drift) | 91.5% | 100% |
+| **Unauthorized Actions** | **Strictly 0** *(Hard Gate)* | 3 Violations | 0 | 0 |
 
-### 3. Governance & Business Intelligence
-* **Natural Language Analytics (`ask`):** Conversational analytics assistant allowing non-technical managers to query stock, sales velocity, and supplier prices in plain English. Includes one-click guardrail tests demonstrating that SQL injection and write attempts are automatically blocked.
-* **Compliance & Audit Trail (`audit`):** Tamper-proof compliance ledger tracking every agent decision, policy check, and user approval. Features an interactive test verifying that SQLite database triggers reject unauthorized `DELETE` and `UPDATE` statements.
-* **ROI & Model Evaluation (`benchmark`):** Interactive comparison charts displaying 90-day rolling simulation results across all 4 benchmark systems with 95% bootstrap confidence intervals.
-* **Company Configuration (`settings`):** Adjust supplier scoring weights (Price vs Lead Time vs Reliability), corporate working capital budgets, service level targets ($z$), and industry sector profiles (Supermarket, Pharmacy, Hardware).
+<div align="center">
+  <img src="docs/images/safety_benchmark.png" alt="Safety Benchmark" width="60%" />
+</div>
 
 ---
 
-## Setup
+## Setup & Quickstart
 
-Requires **Python 3.9 to 3.12** and Git. No GPU and no paid API keys required.
+### Prerequisites
+* **Python 3.9 to 3.12**
+* **Git**
+* No GPU required. Runs 100% locally on CPU out of the box with zero token costs.
 
-### Windows (PowerShell)
+### 1. Clone & Set Up Environment
 
+#### Windows (PowerShell)
 ```powershell
 git clone https://github.com/Arkeshak/ralypto-university.git
 cd ralypto-university
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r project/requirements.txt
-python project/main.py serve
 ```
 
-### Linux / macOS
-
+#### macOS / Linux
 ```bash
 git clone https://github.com/Arkeshak/ralypto-university.git
 cd ralypto-university
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r project/requirements.txt
-python project/main.py serve
 ```
 
-The web application will open in your default browser at **`http://localhost:8501`**.
+### 2. Launch the Application
+```bash
+python project/main.py serve
+```
+Open your browser and navigate to:
+👉 **`http://localhost:8501`**
 
 > [!TIP]
-> **Optional Live LLM Integration:** To enable external models (OpenAI, Anthropic Claude, or local Ollama) for conversational synthesis, copy `.env.example` to `.env` and set your API keys. Without `.env`, ProcureAgents automatically runs in fast, reproducible offline mode.
+> **Optional Cloud LLM Integration:** To enable external models (OpenAI, Anthropic Claude, or local Ollama) for conversational synthesis, copy `.env.example` to `.env` and configure your API keys. Without `.env`, ProcureAgents automatically runs in fast, reproducible offline mode.
 
 ---
 
-## Commands
+## CLI Commands Reference
 
-All core operations can be executed directly via the CLI:
+All core operations can be run directly from the command line:
 
-| Command | Purpose |
-|---|---|
-| `python project/main.py serve` | Launches the Streamlit SaaS web interface |
-| `python project/main.py simulate [--profile pharmacy] [--approve-first]` | Seeds a synthetic retail ERP scenario and executes agents across all alerts |
-| `python project/main.py simulate --replay --system multi_agent` | Runs a 90-day rolling business replay and outputs business outcomes |
-| `python project/main.py benchmark --profile supermarket --repeats 3 --seed 1` | Executes the comparative 4-system benchmark (Proposal Section 7) |
-| `python project/main.py study --volunteer <name>` | Runs the interactive human purchasing baseline study (System C) |
-| `python project/main.py query "Which items expire within 7 days?"` | Queries the ERP in natural English via the Query Agent |
-| `python project/main.py approve <po_id> --user bob [--reject]` | Approves or rejects a pending purchase order (RBAC enforced) |
-| `python -m pytest project/tests -q` | Executes the full test suite (80 unit & integration tests) |
-| `ruff check project/` | Runs the Ruff code linter and quality checks (0 errors) |
+```bash
+# Launch the Streamlit SaaS web application
+python project/main.py serve
 
-### Built-in User Roles (Role-Based Access Control)
+# Run an automated procurement simulation on a retail profile
+python project/main.py simulate --profile supermarket
 
-* **`alice` (Buyer):** Formulates replenishment plans, runs AI sourcing workflows, and drafts purchase orders. Self-approval is strictly blocked by corporate governance policy.
-* **`bob` (Store Manager / Approver):** Reviews AI recommendations, examines supplier quote breakdowns, and executes financial approval or rejection.
-* **`carol` (Viewer):** Read-only access to dashboards, reports, and data querying.
-* **`root` (Administrator):** Full administrative privileges, budget ceiling adjustments, supplier scoring tuning, and ERP dataset regeneration.
+# Run a 90-day rolling business replay simulation
+python project/main.py simulate --replay --system multi_agent
 
----
+# Run the 4-system comparative benchmark (Proposal Section 7)
+python project/main.py benchmark --profile supermarket --repeats 3 --seed 1
 
-## Evaluation Benchmark
+# Run the interactive human purchasing baseline study
+python project/main.py study --volunteer "StoreManager_01"
 
-In accordance with **Section 7 of our project proposal**, ProcureAgents evaluates procurement performance against three industry alternative baselines across identical 90-day replay simulations:
+# Query the ERP in plain English via the CLI
+python project/main.py query "Which items expire within 7 days?"
 
-1. **System A (ProcureAgents Collaborative MAS):** Our multi-agent architecture with LangGraph state machine, LightGBM machine learning forecasting, multi-criteria vendor scoring, and policy validation.
-2. **System B (Single-Agent Monolithic Baseline):** A monolithic ReAct LLM prompt with a tool-calling loop and identical revision budget.
-3. **System C (Human Procurement Baseline):** Empirical purchasing decisions recorded from 5 human retail practitioners across identical scenarios.
-4. **System D (Rule-Based Static Baseline):** Classical static $(s, S)$ min-max inventory reorder rules without machine learning.
+# Approve a purchase order via CLI (RBAC enforced: user must be an approver)
+python project/main.py approve 1 --user bob
 
-### Benchmark Highlights
-* **70&ndash;80% Reduction in Stockouts:** System A significantly outperforms static rules and human purchasers by adapting safety stock buffers to empirical demand volatility ($\sigma$).
-* **Zero Spoilage Waste:** Proactive detection of expiring batches triggers clearance markdowns, preventing perishable write-offs.
-* **Zero Unsafe Actions:** Across all seeded scenarios and fault injection tests, System A recorded **strictly 0 unauthorized actions** due to the hard deterministic boundaries of the Safe-Action Gate.
+# Execute the test suite (80 unit & integration tests)
+python -m pytest project/tests -q
+
+# Run the code linter (Ruff)
+python -m ruff check project/
+
+# Run the type checker (Pyrefly)
+pyrefly check project/
+```
+
+### User Roles & Permissions
+
+| User | System Role | Permissions |
+|---|---|---|
+| **`alice`** | **Purchasing Officer (Buyer)** | Formulates replenishment plans, runs AI sourcing workflows, drafts purchase orders. Self-approval is strictly blocked by Maker-Checker governance. |
+| **`bob`** | **Store Manager (Approver)** | Reviews AI proposals, examines vendor quotes, edits order quantities, and holds executive sign-off authority. |
+| **`carol`** | **Viewer / Auditor** | Read-only access to dashboards, reports, and conversational queries. |
+| **`root`** | **Administrator** | Full privileges: adjusts company budget caps, tunes supplier scoring weights, and resets ERP data. |
 
 ---
 
@@ -209,59 +303,47 @@ In accordance with **Section 7 of our project proposal**, ProcureAgents evaluate
 ```text
 ralypto-university/
 ├── project/
-│   ├── main.py                 # CLI entry point (serve, simulate, benchmark, study, query, approve)
-│   ├── app.py                  # Streamlit application entry point & guided tour
+│   ├── main.py                 # CLI entry point (serve, simulate, benchmark, study, query)
+│   ├── app.py                  # Streamlit application navigation & guided tour
 │   ├── requirements.txt        # Pinned project dependencies
-│   ├── ui/                     # Presentation layer
-│   │   ├── theme.py            # Enterprise styling, design tokens, and CSS components
-│   │   ├── pages_ops.py        # Executive Overview, Restock Alerts, AI Purchasing Assistant
-│   │   ├── pages_gov.py        # Manager Approval Gate, Natural Language Analytics, Audit Trail
-│   │   ├── pages_eval.py       # ROI & Model Evaluation, Company Configuration
+│   ├── ui/                     # Presentation & UI layer
+│   │   ├── theme.py            # Design tokens, CSS components, badges, and callouts
+│   │   ├── products.py         # Retail catalogs, high-res photos, and offline SVG fallbacks
+│   │   ├── pages_ops.py        # Store Dashboard, Product Inventory, Stock Alerts, Purchasing Assistant
+│   │   ├── pages_gov.py        # Manager Approval Desk, AI Business Assistant, Activity History
+│   │   ├── pages_eval.py       # ROI & Model Evaluation, Store Settings
 │   │   └── state.py            # Global UI session state and service bindings
-│   ├── procure/                # Core business and agent logic
-│   │   ├── agents.py           # Stock monitor, supplier ranking, PO formulation, validator
-│   │   ├── orchestrator.py     # LangGraph state machine compilation and conditional routing
+│   ├── procure/                # Core business & multi-agent logic
+│   │   ├── agents.py           # Stock monitor, supplier ranker, PO drafter, validator
+│   │   ├── orchestrator.py     # LangGraph state machine compilation & conditional routing
 │   │   ├── forecasting.py      # LightGBM regression, Exponential Smoothing, backtesting
 │   │   ├── gate.py             # Safe-action gate, PO state machine, append-only SQLite audit
-│   │   ├── service.py          # Service facade enforcing RBAC and permissions
+│   │   ├── service.py          # Service facade enforcing RBAC permissions & Maker-Checker
 │   │   ├── query.py            # Natural language Query Agent (AST SQL validation via sqlglot)
-│   │   ├── data.py             # Synthetic ERP generator with realistic retail profiles
+│   │   ├── data.py             # Synthetic ERP generator with realistic retail catalogs
 │   │   ├── benchmark.py        # 4-system benchmark evaluation harness
 │   │   ├── simulator.py        # 90-day rolling business replay simulator
 │   │   ├── report.py           # Evaluation report and statistical summary generator
-│   │   ├── registry.py         # Extensible plugin and agent tool registry
 │   │   └── llm.py              # Provider-agnostic LLM interface with offline fallback
 │   └── tests/                  # Pytest test suite (80 unit & integration tests)
 ├── docs/                       # Project documentation
+│   ├── images/                 # High-resolution application screenshots & benchmark charts
 │   ├── Proposal.docx           # Initial project proposal (Innodata AI Catalyst '26)
 │   ├── Workflow.md             # Detailed agent workflow, state machine, and safety model
 │   ├── PROJECT_DETAILS.md      # Comprehensive technical reference and benchmark results
 │   └── EXTENDING.md            # Guide for registering new custom agents and tools
-├── samples/                    # Sample traces, ERP database snapshots, and benchmark runs
 ├── pyproject.toml              # Ruff, Pytest, and Pyrefly configuration
-├── pyrightconfig.json          # Pyright language server configuration
 └── README.md                   # Project documentation and quickstart guide
 ```
-
----
-
-## Documentation
-
-| Document | Key Information |
-|---|---|
-| [docs/Workflow.md](docs/Workflow.md) | Agent graph topology, PO lifecycle states, conflict resolution rules, and safety gate specification |
-| [docs/PROJECT_DETAILS.md](docs/PROJECT_DETAILS.md) | Technical architecture, empirical benchmark data, model descriptions, and limitations |
-| [docs/EXTENDING.md](docs/EXTENDING.md) | Step-by-step tutorial on registering new agents and tools without modifying core code |
-| [docs/Proposal.docx](docs/Proposal.docx) | Phase 1 problem formulation, objectives, and evaluation design |
 
 ---
 
 ## Team
 
 **Team Ralypto · University of Kelaniya**
-* Arkeshkar
-* Seenujan
-* Harishchandran
-* Braynkanth
+* **Arkeshkar**
+* **Seenujan**
+* **Harishchandran**
+* **Braynkanth**
 
 *Innodata AI Catalyst '26 · University Track*
