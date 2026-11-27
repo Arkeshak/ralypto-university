@@ -498,7 +498,7 @@ def render_case_summary(case: CaseFile):
         )
         c1, c2 = st.columns([1, 1])
         with c1:
-            if st.button("Apply Clearance Discount to POS", icon=":material/discount:", type="primary", use_container_width=True):
+            if st.button("Apply Clearance Discount to POS", icon=":material/sell:", type="primary", use_container_width=True):
                 st.success(f"Clearance markdown of {pct}% applied to POS for {v['name']}! Shelf price updated to LKR {sale_price:.2f}.")
         with c2:
             if st.button("Switch to Low-Stock Item for Restock Order", icon=":material/shopping_cart:", use_container_width=True):
