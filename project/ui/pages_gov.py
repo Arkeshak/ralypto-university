@@ -26,8 +26,8 @@ def po_card(svc, po: dict, can_act: bool, prefix: str = "p"):
     k = po["po_id"]
 
     # Compute live stock on hand and remaining budget
-    stock_levels = svc.env.stock_levels()
-    current_stock = int(stock_levels.get(sku, 0))
+    row = svc.env.db.execute("SELECT on_hand FROM stock WHERE sku=?", (sku,)).fetchone()
+    current_stock = int(row[0]) if row else 0
     budget_rem = round(svc.env.budget_cap - svc.env.committed_spend(), 2)
 
     sub_info = f"Purchase Request #{k} • Created by {po['created_by']}" + (f" • Approved by {po['approved_by']}" if po.get("approved_by") else "")

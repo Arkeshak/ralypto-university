@@ -93,6 +93,9 @@ class Env:
             out.setdefault(r[0], set()).add(r[1])
         return out
 
+    def stock_levels(self) -> dict[str, int]:
+        return {r[0]: int(r[1]) for r in self.db.execute("SELECT sku, on_hand FROM stock").fetchall()}
+
     def committed_spend(self):
         return float(self.db.execute("SELECT COALESCE(SUM(total),0) FROM pos WHERE status IN "
                                      "('PENDING_APPROVAL','APPROVED','CREATED','RECEIVED')").fetchone()[0])
