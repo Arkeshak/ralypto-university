@@ -41,14 +41,10 @@ Small and medium-sized enterprises (SMEs) across retail supermarkets, pharmacies
 
 ---
 
-## Application Walkthrough & Screenshots
+## Application Walkthrough & User Experience
 
 ### 1. Store Dashboard (Executive Overview)
 Answers the store owner's 6 core questions immediately: Total inventory value, products running low, expiring stock at risk, and orders awaiting approval.
-
-<div align="center">
-  <img src="docs/images/dashboard_overview.png" alt="Executive Store Dashboard" width="100%" />
-</div>
 
 * **Financial KPI Cards:** Real-time store inventory value (LKR), low-stock count, and perishable stock value at risk.
 * **Urgent Restock Action Queue:** Visual cards with real product photography (*Anchor Milk Powder, Prima KottuMee, Coca-Cola*), days of supply remaining, and 1-click reorder triggers.
@@ -59,10 +55,6 @@ Answers the store owner's 6 core questions immediately: Total inventory value, p
 ### 2. Manager Approval Desk (Human-in-the-Loop Governance)
 Under strict corporate **Maker-Checker segregation**, purchasing officers formulate requests, while store managers review and authorize orders before any funds are committed.
 
-<div align="center">
-  <img src="docs/images/manager_approvals.png" alt="Manager Approval Desk" width="100%" />
-</div>
-
 * **Executive PO Card:** Displays product image, requested quantity, current shelf stock, vendor reliability rating, and remaining store budget.
 * **One-Click Actions:** Primary green **Approve Order**, red **Reject Order**, and **Edit Quantity** with instant safety re-verification.
 * **Official Export Documents:** Download official **Purchase Order PDFs** and **CSV spreadsheets** with 1 click.
@@ -72,10 +64,6 @@ Under strict corporate **Maker-Checker segregation**, purchasing officers formul
 ### 3. Smart Inventory Clearance (Expiry Risk vs Restock)
 When a perishable item is nearing expiration, placing a new order would create financial write-off loss. ProcureAgents automatically pivots from ordering to formulating a **20% clearance markdown**.
 
-<div align="center">
-  <img src="docs/images/inventory_clearance.png" alt="Inventory Clearance Action" width="100%" />
-</div>
-
 * **Financial Recovery Metrics:** Units to liquidate, current retail price (LKR), discounted shelf price (LKR), and estimated capital recovered.
 * **POS Integration:** 1-click button to apply markdown codes directly to checkout registers.
 
@@ -83,10 +71,6 @@ When a perishable item is nearing expiration, placing a new order would create f
 
 ### 4. Interactive Guided Tour (Client Walkthrough)
 A 3-phase interactive demonstration running live against the ERP database without pre-recorded data:
-
-<div align="center">
-  <img src="docs/images/guided_tour.png" alt="Interactive Guided Tour" width="100%" />
-</div>
 
 * **Phase 1 (AI Market Analysis):** Watch the multi-agent graph stream real-time inferences, demand forecasts, and supplier evaluations.
 * **Phase 2 (Human Governance):** Verifies that Buyer Alice's self-approval is blocked by RBAC security, and Manager Bob authorizes the order.
@@ -193,10 +177,6 @@ ProcureAgents adapts dynamically to different retail sectors:
 
 In accordance with **Section 7 of our project proposal**, ProcureAgents was benchmarked across identical 90-day rolling business replay simulations against three industry alternatives:
 
-<div align="center">
-  <img src="docs/images/benchmark_outcomes.png" alt="Benchmark Comparison Outcomes" width="75%" />
-</div>
-
 | Performance Metric | System A (ProcureAgents MAS) | System B (Single-Agent LLM) | System C (Human Purchasers) | System D (Static Min-Max Rules) |
 |---|---|---|---|---|
 | **Stockout Rate** | **0.8%** *(Best)* | 4.2% | 8.5% | 14.1% |
@@ -205,10 +185,6 @@ In accordance with **Section 7 of our project proposal**, ProcureAgents was benc
 | **Forecast Accuracy (WAPE)** | **14.2%** *(LightGBM)* | 28.5% | 36.0% | N/A (Static) |
 | **Policy Compliance** | **100% Verified** | 82.0% (Prompt Drift) | 91.5% | 100% |
 | **Unauthorized Actions** | **Strictly 0** *(Hard Gate)* | 3 Violations | 0 | 0 |
-
-<div align="center">
-  <img src="docs/images/safety_benchmark.png" alt="Safety Benchmark" width="60%" />
-</div>
 
 ---
 
