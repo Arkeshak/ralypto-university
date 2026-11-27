@@ -97,7 +97,11 @@ A 3-phase interactive demonstration running live against the ERP database withou
 
 ## Multi-Agent Architecture
 
-The procurement lifecycle is orchestrated as a state machine using **LangGraph**:
+The procurement lifecycle is orchestrated as a state machine using **LangGraph**, coordinating specialized agents through automated analysis, machine learning forecasts, supplier comparisons, and safety verification:
+
+<div align="center">
+  <img src="docs/images/multi_agent_workflow.jpg" alt="ProcureAgents Multi-Agent Workflow Execution" width="100%" />
+</div>
 
 ```mermaid
 flowchart TB
