@@ -61,9 +61,9 @@ class Env:
 
     def refresh(self):
         """Re-read configuration (the simulator advances `today_day` between review rounds)."""
-        self.today = int(self.meta("today_day"))
-        self.budget_cap = float(self.meta("budget_cap"))
-        self.profile = PROFILES[self.meta("profile")]
+        self.today = int(self.meta("today_day") or 0)
+        self.budget_cap = float(self.meta("budget_cap") or 50000.0)
+        self.profile = PROFILES[str(self.meta("profile") or "supermarket")]
 
     # ------------------------------------------------------------ read helpers
     def meta(self, k):
@@ -160,7 +160,7 @@ def forecaster(env: Env, sku: str, as_of: int | None = None) -> Forecast:
         n_rows = env.db.execute("SELECT COUNT(*) FROM sales WHERE day<?", (as_of,)).fetchone()[0]
         model = F.get_lgbm((env.db_path, as_of, n_rows), lambda: env.all_histories(as_of), env.all_promos, as_of)
         pred = model.predict(clean, env.promos(sku), MAX_HORIZON) if model else None
-        if pred:
+        if pred and model:
             daily = pred[0]
             sigma = max(model.resid_sigma.get(sku, ses_sigma), ses_sigma * 0.5)
             method = "LightGBM (global, direct multi-horizon)"
@@ -254,8 +254,9 @@ def po_drafter(env: Env, alert: Alert, fc: Forecast, rank: SupplierRanking, opti
     if not rank.options:
         return None
     o = rank.options[min(option_idx, len(rank.options) - 1)]
-    h = min(MAX_HORIZON, o.lead_time + env.profile["review"])
-    z = env.profile["z"]
+    review_days = env.profile["review"]
+    h: int = min(MAX_HORIZON, o.lead_time + review_days)
+    z: float = float(env.profile["z"])
     need = fc.mean(h) + z * fc.sigma(h) * safety_mult
     if safety_mult > 1:
         need += (safety_mult - 1) * fc.mean(h)
