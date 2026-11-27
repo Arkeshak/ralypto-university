@@ -46,6 +46,10 @@ Small and medium-sized enterprises (SMEs) across retail supermarkets, pharmacies
 ### 1. Store Dashboard (Executive Overview)
 Answers the store owner's 6 core questions immediately: Total inventory value, products running low, expiring stock at risk, and orders awaiting approval.
 
+<div align="center">
+  <img src="docs/images/dashboard.png" alt="ProcureAgents Executive Store Dashboard" width="100%" />
+</div>
+
 * **Financial KPI Cards:** Real-time store inventory value (LKR), low-stock count, and perishable stock value at risk.
 * **Urgent Restock Action Queue:** Visual cards with real product photography (*Anchor Milk Powder, Prima KottuMee, Coca-Cola*), days of supply remaining, and 1-click reorder triggers.
 * **Expiry Clearance Queue:** Highlights batches nearing expiration with countdown days.
