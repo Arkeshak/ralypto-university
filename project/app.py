@@ -162,7 +162,7 @@ def demo():
                     kind="info",
                 )
             st.write(f"Store Manager 'bob' reviews Purchase Order #{po_id}: {draft.qty} units from {draft.supplier_name} "
-                     f"(@ ${draft.unit_price:.2f}/unit) = **${draft.total:,.2f}**")
+                     f"(@ LKR {draft.unit_price:.2f}/unit) = **LKR {draft.total:,.2f}**")
             res = svc.approve("bob", po_id, "Authorized in executive walkthrough")
             st.success(f"Purchase Order #{po_id} Authorized & Committed to ERP (Status: {res})")
         s2.update(label=f"Phase 2 Complete: Authorized by Store Manager Bob (PO #{po_id})", state="complete")

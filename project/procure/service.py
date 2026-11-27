@@ -229,8 +229,8 @@ class ProcureService:
         c.setFillColorRGB(0.1, 0.1, 0.1)
         y = Hh - 45 * mm
         for label, val in [("Status", po["status"]), ("Supplier", po["supplier"]), ("SKU", po["sku"]),
-                           ("Quantity", po["qty"]), ("Unit price", f"{po['unit_price']:.2f}"),
-                           ("Total", f"{po['total']:.2f}"), ("Drafted by", po["created_by"]),
+                           ("Quantity", po["qty"]), ("Unit price (LKR)", f"LKR {po['unit_price']:.2f}"),
+                           ("Total (LKR)", f"LKR {po['total']:.2f}"), ("Drafted by", po["created_by"]),
                            ("Approved by", po["approved_by"] or "-")]:
             c.setFont("Helvetica-Bold", 11)
             c.drawString(20 * mm, y, label)

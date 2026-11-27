@@ -83,13 +83,13 @@ def overview():
     # 6 Key Business Metrics answering the store owner's top questions
     c = st.columns(4)
     with c[0]:
-        T.kpi("Inventory Value", f"${total_inv_val:,.2f}", f"{len(inv)} total active products", "primary")
+        T.kpi("Inventory Value", f"LKR {total_inv_val:,.2f}", f"{len(inv)} total active products", "primary")
     with c[1]:
         tone = "bad" if low_stock_count > 0 else "good"
         T.kpi("Products Running Low", low_stock_count, "Below safety reorder threshold", tone)
     with c[2]:
         tone = "bad" if exp_val > 0 else "good"
-        T.kpi("Expiring Stock (14d)", f"${exp_val:,.2f}", f"{len(exp)} batches at risk of spoilage", tone)
+        T.kpi("Expiring Stock (14d)", f"LKR {exp_val:,.2f}", f"{len(exp)} batches at risk of spoilage", tone)
     with c[3]:
         n_pos = len(open_pos)
         tone = "warn" if n_pos > 0 else "good"
@@ -125,7 +125,7 @@ def overview():
                 with r1:
                     st.markdown(products.product_cell_html(
                         row["sku"], row["name"], row["category"],
-                        subtext=f"Product Code: {row['sku']} • Cost: ${row['unit_cost']:.2f} / unit",
+                        subtext=f"Product Code: {row['sku']} • Cost: LKR {row['unit_cost']:.2f} / unit",
                         size=48
                     ), unsafe_allow_html=True)
                 with r2:
@@ -159,7 +159,7 @@ def overview():
                 with e2:
                     st.metric("Expiring Quantity", f"{int(erow['qty'])} units")
                 with e3:
-                    st.metric("Value at Risk", f"${erow['value']:,.2f}", delta="-100% loss if expired", delta_color="inverse")
+                    st.metric("Value at Risk", f"LKR {erow['value']:,.2f}", delta="-100% loss if expired", delta_color="inverse")
                 with e4:
                     st.write("")
                     if st.button("Review Clearance", icon=":material/sell:", key=f"ov_exp_{erow['sku']}",
@@ -190,7 +190,7 @@ def overview():
             agg = ex30.groupby("days_to_expiry", as_index=False).agg(value=("value", "sum"), batches=("sku", "count"))
             ch = alt.Chart(agg).mark_bar(color=T.AMBER).encode(
                 x=alt.X("days_to_expiry:O", title="Days Remaining to Expiry"),
-                y=alt.Y("value:Q", title="At-Risk Stock Value ($)"),
+                y=alt.Y("value:Q", title="At-Risk Stock Value (LKR)"),
                 color=alt.condition(alt.datum.days_to_expiry <= 7, alt.value(T.RED), alt.value(T.AMBER)),
                 tooltip=["days_to_expiry", "value", "batches"]
             )
@@ -232,7 +232,7 @@ def inventory():
             with c1:
                 st.markdown(products.product_cell_html(
                     row["sku"], row["name"], row["category"],
-                    subtext=f"Product Code: {row['sku']} • Unit Cost: ${row['unit_cost']:.2f}",
+                    subtext=f"Product Code: {row['sku']} • Unit Cost: LKR {row['unit_cost']:.2f}",
                     size=46
                 ), unsafe_allow_html=True)
             with c2:
@@ -407,14 +407,14 @@ def _summary(m) -> str:
         if opts:
             top = opts[0]
             return (f"Evaluated {len(opts)} supplier quotes. Best vendor: {top.get('name')} "
-                    f"(@ ${top.get('unit_price', 0):.2f}/unit, {top.get('lead_time', 0)}d delivery, "
+                    f"(@ LKR {top.get('unit_price', 0):.2f}/unit, {top.get('lead_time', 0)}d delivery, "
                     f"{top.get('reliability', 0):.0%} reliability).")
         return "No suppliers available."
     if a == "po_agent":
         qty = o.get("qty", 0)
         price = o.get("unit_price", 0)
         action = "Replenishment order recommended" if o.get("action") == "order" else "Clearance markdown recommended"
-        return f"{action}: {qty} units from {o.get('supplier_name')} @ ${price:.2f}/unit (Total: ${float(qty) * float(price):,.2f})."
+        return f"{action}: {qty} units from {o.get('supplier_name')} @ LKR {price:.2f}/unit (Total: LKR {float(qty) * float(price):,.2f})."
     if a == "validator":
         if o.get("passed"):
             return "Order Safety Check: PASSED. Order complies with store budget caps and supplier minimum order sizes."
@@ -437,12 +437,12 @@ def render_case_summary(case: CaseFile):
             f'<div class="pa-product-card">'
             f'<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">'
             f'{products.product_cell_html(case.sku, v["name"], v["category"], subtext="Purchase Order Drafted", size=52)}'
-            f'<div style="font-size:1.6rem; font-weight:800; color:#0F766E;">${draft.total:,.2f}</div>'
+            f'<div style="font-size:1.6rem; font-weight:800; color:#0F766E;">LKR {draft.total:,.2f}</div>'
             f'</div>'
             f'<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:10px; margin-top:14px;">'
             f'<div class="pa-stat-box"><div class="label">Requested Order</div><div class="val">{draft.qty} units</div></div>'
             f'<div class="pa-stat-box"><div class="label">Selected Vendor</div><div class="val">{draft.supplier_name}</div></div>'
-            f'<div class="pa-stat-box"><div class="label">Unit Price</div><div class="val">${draft.unit_price:.2f}</div></div>'
+            f'<div class="pa-stat-box"><div class="label">Unit Price</div><div class="val">LKR {draft.unit_price:.2f}</div></div>'
             f'<div class="pa-stat-box"><div class="label">Order Safety Check</div><div class="val" style="color:#16A34A;">PASSED</div></div>'
             f'</div>'
             f'</div>',
@@ -482,9 +482,9 @@ def render_case_summary(case: CaseFile):
             f'</div>'
             f'<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:10px; margin-top:14px;">'
             f'<div class="pa-stat-box"><div class="label">Stock to Liquidate</div><div class="val">{on_hand} units</div></div>'
-            f'<div class="pa-stat-box"><div class="label">Current Retail Price</div><div class="val">${orig_price:.2f}</div></div>'
-            f'<div class="pa-stat-box"><div class="label">Discounted Clearance Price</div><div class="val" style="color:#16A34A;">${sale_price:.2f}</div></div>'
-            f'<div class="pa-stat-box"><div class="label">Est. Revenue Recovered</div><div class="val" style="color:#0F766E;">${recovered:,.2f}</div></div>'
+            f'<div class="pa-stat-box"><div class="label">Current Retail Price</div><div class="val">LKR {orig_price:.2f}</div></div>'
+            f'<div class="pa-stat-box"><div class="label">Discounted Clearance Price</div><div class="val" style="color:#16A34A;">LKR {sale_price:.2f}</div></div>'
+            f'<div class="pa-stat-box"><div class="label">Est. Revenue Recovered</div><div class="val" style="color:#0F766E;">LKR {recovered:,.2f}</div></div>'
             f'</div>'
             f'</div>',
             unsafe_allow_html=True
@@ -499,7 +499,7 @@ def render_case_summary(case: CaseFile):
         c1, c2 = st.columns([1, 1])
         with c1:
             if st.button("Apply Clearance Discount to POS", icon=":material/discount:", type="primary", use_container_width=True):
-                st.success(f"Clearance markdown of {pct}% applied to POS for {v['name']}! Shelf price updated to ${sale_price:.2f}.")
+                st.success(f"Clearance markdown of {pct}% applied to POS for {v['name']}! Shelf price updated to LKR {sale_price:.2f}.")
         with c2:
             if st.button("Switch to Low-Stock Item for Restock Order", icon=":material/shopping_cart:", use_container_width=True):
                 st.switch_page(PAGES["alerts"])

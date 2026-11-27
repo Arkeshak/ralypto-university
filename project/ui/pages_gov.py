@@ -49,7 +49,7 @@ def po_card(svc, po: dict, can_act: bool, prefix: str = "p"):
         with top_r:
             st.markdown(
                 f'<div style="text-align:right;">'
-                f'<div style="font-size:1.75rem; font-weight:800; color:#0F766E;">${T.money(po["total"])}</div>'
+                f'<div style="font-size:1.75rem; font-weight:800; color:#0F766E;">LKR {T.money(po["total"])}</div>'
                 f'<div style="margin-top:2px;">{T.pill(po["status"])}</div>'
                 f'</div>',
                 unsafe_allow_html=True,
@@ -65,7 +65,7 @@ def po_card(svc, po: dict, can_act: bool, prefix: str = "p"):
                 f'<div class="pa-flow-step">'
                 f'<div class="title">Requested Order</div>'
                 f'<div style="font-size:1.3rem; font-weight:800; margin:4px 0; color:#1F2937;">{po["qty"]} units</div>'
-                f'<div class="desc">@ ${T.money(po["unit_price"])} / unit</div>'
+                f'<div class="desc">@ LKR {T.money(po["unit_price"])} / unit</div>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
@@ -95,8 +95,8 @@ def po_card(svc, po: dict, can_act: bool, prefix: str = "p"):
             st.markdown(
                 f'<div class="pa-flow-step">'
                 f'<div class="title">Available Budget</div>'
-                f'<div style="font-size:1.3rem; font-weight:800; margin:4px 0; color:#1F2937;">${T.money(budget_rem)}</div>'
-                f'<div class="desc">After order: ${T.money(max(0.0, budget_rem - po["total"]))}</div>'
+                f'<div style="font-size:1.3rem; font-weight:800; margin:4px 0; color:#1F2937;">LKR {T.money(budget_rem)}</div>'
+                f'<div class="desc">After order: LKR {T.money(max(0.0, budget_rem - po["total"]))}</div>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
@@ -110,7 +110,7 @@ def po_card(svc, po: dict, can_act: bool, prefix: str = "p"):
                     {
                         "Rank": i + 1,
                         "Supplier": o.name,
-                        "Unit Price": f"${o.unit_price:.2f}",
+                        "Unit Price": f"LKR {o.unit_price:.2f}",
                         "Delivery Lead Time": f"{o.lead_time} days",
                         "Reliability Rating": f"{o.reliability:.0%}",
                         "Min Order Qty": o.moq,
@@ -243,8 +243,8 @@ def approvals():
                     "Code": p["sku"],
                     "Supplier": p["supplier"],
                     "Quantity": p["qty"],
-                    "Unit Price ($)": f"${p['unit_price']:.2f}",
-                    "Total Cost ($)": f"${p['total']:.2f}",
+                    "Unit Price (LKR)": f"LKR {p['unit_price']:.2f}",
+                    "Total Cost (LKR)": f"LKR {p['total']:.2f}",
                     "Created By": p["created_by"],
                     "Approved By": p["approved_by"] or "-",
                 })

@@ -276,7 +276,7 @@ def po_drafter(env: Env, alert: Alert, fc: Forecast, rank: SupplierRanking, opti
     trade_off = ""
     if len(rank.options) > 1:
         alt = rank.options[1]
-        trade_off = (f" [Runner-up: {alt.name} at ${alt.unit_price:.2f}, lead {alt.lead_time}d, "
+        trade_off = (f" [Runner-up: {alt.name} at LKR {alt.unit_price:.2f}, lead {alt.lead_time}d, "
                      f"reliability {alt.reliability:.0%}, score {alt.score}]")
     rationale = (f"Order {qty} from {o.name}: forecast {fc.mean(h):.0f} (90% interval {lo:.0f}-{hi:.0f}) over {h}d "
                  f"(confidence {fc.confidence}, {fc.method}), safety z={z}, usable stock {usable:.0f}, "
