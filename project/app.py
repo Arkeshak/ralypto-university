@@ -67,7 +67,8 @@ def demo():
             st.rerun()
 
     def _alert_label(a):
-        pname, _, _ = products.get_product_visuals(a.sku, profile)
+        v_a = products.get_product_visuals(a.sku)
+        pname = v_a["name"]
         tag = "Restock Needed" if a.kind == "stockout" else ("Dual Risk" if a.kind == "both" else "Clearance Markdown")
         return f"[{tag}] {pname} ({a.sku}) - Stock: {int(a.on_hand)} units | Min: {int(a.reorder_point)}"
 
