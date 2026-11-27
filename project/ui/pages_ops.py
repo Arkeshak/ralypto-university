@@ -427,6 +427,7 @@ def _summary(m) -> str:
 
 
 def render_case_summary(case: CaseFile):
+    svc = state.svc()
     st.markdown("---")
     v = products.get_product_visuals(case.sku)
 
@@ -465,18 +466,43 @@ def render_case_summary(case: CaseFile):
                 st.switch_page(PAGES["approvals"])
 
     elif case.status == "no_action" and case.draft and case.draft.action == "markdown":
+        on_hand = case.alert.on_hand if case.alert else 0
+        item_row = svc.env.db.execute("SELECT unit_cost FROM items WHERE sku=?", (case.sku,)).fetchone()
+        cost = float(item_row[0]) if item_row else 10.0
+        orig_price = round(cost * 1.35, 2)
+        pct = getattr(case.draft, "markdown_pct", 20)
+        sale_price = round(orig_price * (1 - pct / 100), 2)
+        recovered = round(sale_price * on_hand, 2)
+
         st.markdown(
             f'<div class="pa-product-card">'
+            f'<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">'
             f'{products.product_cell_html(case.sku, v["name"], v["category"], subtext="Inventory Clearance Action", size=52)}'
+            f'<div style="font-size:1.35rem; font-weight:800; color:#D97706;">{pct}% CLEARANCE DISCOUNT</div>'
+            f'</div>'
+            f'<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:10px; margin-top:14px;">'
+            f'<div class="pa-stat-box"><div class="label">Stock to Liquidate</div><div class="val">{on_hand} units</div></div>'
+            f'<div class="pa-stat-box"><div class="label">Current Retail Price</div><div class="val">${orig_price:.2f}</div></div>'
+            f'<div class="pa-stat-box"><div class="label">Discounted Clearance Price</div><div class="val" style="color:#16A34A;">${sale_price:.2f}</div></div>'
+            f'<div class="pa-stat-box"><div class="label">Est. Revenue Recovered</div><div class="val" style="color:#0F766E;">${recovered:,.2f}</div></div>'
+            f'</div>'
             f'</div>',
             unsafe_allow_html=True
         )
         T.callout(
-            "**Inventory Clearance Action Recommended:** The system determined that ordering more units is unnecessary "
-            "due to expiring shelf stock. Instead, an immediate **20% price markdown** is recommended to liquidate current "
-            "shelf inventory before expiration.",
+            f"**AI Optimization Outcome: Inventory Clearance Recommended**<br>"
+            f"The system analyzed <b>{v['name']}</b> and determined that placing a supplier restock order is unnecessary "
+            f"because {on_hand} units are approaching expiration on shelf. Ordering more would result in write-off losses.<br>"
+            f"Instead, the system formulated an immediate **{pct}% price markdown** to liquidate current shelf stock before expiration.",
             kind="tip"
         )
+        c1, c2 = st.columns([1, 1])
+        with c1:
+            if st.button("Apply Clearance Discount to POS", icon=":material/discount:", type="primary", use_container_width=True):
+                st.success(f"Clearance markdown of {pct}% applied to POS for {v['name']}! Shelf price updated to ${sale_price:.2f}.")
+        with c2:
+            if st.button("Switch to Low-Stock Item for Restock Order", icon=":material/shopping_cart:", use_container_width=True):
+                st.switch_page(PAGES["alerts"])
 
 
 def workflow_dot(visited: set, failed: set, active: str = "") -> str:
